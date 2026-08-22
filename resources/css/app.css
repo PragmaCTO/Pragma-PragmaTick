@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --color-darkcyan-50: #e6f7f7;
+    --color-darkcyan-100: #c0eded;
+    --color-darkcyan-200: #94e1e1;
+    --color-darkcyan-300: #62d3d3;
+    --color-darkcyan-400: #33c4c4;
+    --color-darkcyan-500: #00b3b3;
+    --color-darkcyan-600: #008b8b;
+    --color-darkcyan-700: #007373;
+    --color-darkcyan-800: #005c5c;
+    --color-darkcyan-900: #004545;
+}
+
+:root {
+    --bg-page: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #f1f5f9;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --primary: #008b8b;
+    --primary-hover: #007373;
+    --primary-light: #e6f7f7;
+    --card-shadow: 0 4px 6px -1px rgba(0, 139, 139, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+    --bg-page: #0b1319;
+    --bg-surface: #141f26;
+    --bg-surface-elevated: #1e2c36;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --border-color: #263846;
+    --primary: #20b2aa;
+    --primary-hover: #179b94;
+    --primary-light: rgba(32, 178, 170, 0.15);
+    --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+}
+
+body {
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
