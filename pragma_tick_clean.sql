@@ -249,6 +249,7 @@ CREATE TABLE `project_user` (
   `project_id` bigint(20) UNSIGNED NOT NULL,
   `user_id` bigint(20) UNSIGNED NOT NULL,
   `role` varchar(50) NOT NULL DEFAULT 'member',
+  `position` varchar(100) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
