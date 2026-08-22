@@ -17,13 +17,45 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WikiController;
 use Illuminate\Support\Facades\Route;
 
-// Emergency Cache Clearing Utility (Browser Accessible)
+// Emergency Cache Clearing Utility (Pure Native PHP - No DOMDocument or Termwind needed)
 Route::get('/clear-cache', function () {
-    \Illuminate\Support\Facades\Artisan::call('config:clear');
-    \Illuminate\Support\Facades\Artisan::call('cache:clear');
-    \Illuminate\Support\Facades\Artisan::call('route:clear');
-    \Illuminate\Support\Facades\Artisan::call('view:clear');
-    return response('All application caches cleared successfully! You can now log in.', 200);
+    // 1. Remove bootstrap cached config/route files
+    $cachedFiles = [
+        base_path('bootstrap/cache/config.php'),
+        base_path('bootstrap/cache/routes-v7.php'),
+        base_path('bootstrap/cache/events.php'),
+        base_path('bootstrap/cache/packages.php'),
+        base_path('bootstrap/cache/services.php'),
+    ];
+
+    foreach ($cachedFiles as $file) {
+        if (file_exists($file)) {
+            @unlink($file);
+        }
+    }
+
+    // 2. Clean compiled Blade views
+    $viewPath = storage_path('framework/views');
+    if (file_exists($viewPath)) {
+        foreach (glob("$viewPath/*.php") as $vFile) {
+            @unlink($vFile);
+        }
+    }
+
+    // 3. Clean cache storage data
+    $cachePath = storage_path('framework/cache/data');
+    if (file_exists($cachePath)) {
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($cachePath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+            @$todo($fileinfo->getRealPath());
+        }
+    }
+
+    return response('Native PHP Cache Cleaned Successfully! All cached config, views, and routes have been purged. You can now log in.', 200);
 });
 
 // Authentication Routes (Guest Only)
