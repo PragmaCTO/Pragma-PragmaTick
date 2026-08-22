@@ -17,6 +17,15 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WikiController;
 use Illuminate\Support\Facades\Route;
 
+// Emergency Cache Clearing Utility (Browser Accessible)
+Route::get('/clear-cache', function () {
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    return response('All application caches cleared successfully! You can now log in.', 200);
+});
+
 // Authentication Routes (Guest Only)
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
