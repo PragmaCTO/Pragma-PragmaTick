@@ -1,7 +1,6 @@
 -- ========================================================
--- PragmaTick Comprehensive MySQL Production Database Dump
--- Generated: 2026-08-22 14:24:28
--- Extracted directly from live SQLite database structure & dataset
+-- PragmaTick Production MySQL Database Dump
+-- Generated: 2026-08-22 14:26:19
 -- Compatible with MySQL 5.7+, 8.0+, MariaDB 10.3+, cPanel MySQL
 -- ========================================================
 
@@ -475,7 +474,7 @@ CREATE TABLE `users` (
 
 -- Dumping data for `users` (1 rows) --
 INSERT INTO `users` (`id`, `name`, `email`, `emails`, `phone_number`, `is_super_admin`, `email_verified_at`, `password`, `remember_token`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, 'Super Admin', 'superadmin@pragmacto.com', '["superadmin@pragmacto.com"]', '+1-555-0000', 1, NULL, '$2y$12$X7.hA370thRHI/gFIjnAqewJa5KrcNwb1LwK6OiBufxVEtffStoYG', NULL, NULL, '2026-08-22 14:00:52', '2026-08-22 14:00:52');
+(1, 'Super Admin', 'superadmin@pragmacto.com', '["superadmin@pragmacto.com"]', '+1-555-0000', 1, NULL, '$2y$12$af6FEu/pIYMIbC8UqEIJ7eIL7pEFm63w1DNyOggLfHK8VdxC5r/bK', NULL, NULL, '2026-08-22 14:26:19', '2026-08-22 14:26:19');
 
 -- --------------------------------------------------------
 -- Table structure for `wiki_book_user`
