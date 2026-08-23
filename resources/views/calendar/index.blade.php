@@ -438,6 +438,22 @@
                 </div>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Recurrence Pattern</label>
+                    <select name="recurrence_pattern" id="inputRecurrence" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);" onchange="toggleRecurrenceEndDate(this)">
+                        <option value="none">None (One-time)</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                <div id="recurrenceEndContainer" style="display: none;">
+                    <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Recurrence End Date</label>
+                    <input type="date" name="recurrence_end_date" id="inputRecurrenceEnd" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                </div>
+            </div>
+
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Select Meeting Attendees (Org Scope)</label>
                 <select name="attendees[]" class="select2-attendees" multiple style="width:100%;">
@@ -491,6 +507,18 @@
             document.getElementById('inputEndTime').value = endIso;
         }
         document.getElementById('newEventModal').style.display = 'flex';
+    }
+
+    function toggleRecurrenceEndDate(select) {
+        const endContainer = document.getElementById('recurrenceEndContainer');
+        const endInput = document.getElementById('inputRecurrenceEnd');
+        if (select.value === 'none') {
+            endContainer.style.display = 'none';
+            endInput.removeAttribute('required');
+        } else {
+            endContainer.style.display = 'block';
+            endInput.setAttribute('required', 'required');
+        }
     }
 
     $(document).ready(function() {

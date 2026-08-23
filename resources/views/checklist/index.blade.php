@@ -106,10 +106,14 @@
                         @endif
 
                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.5rem;">
-                            <span>Start: {{ $item->start_date ? $item->start_date->format('M d') : 'TBD' }} | Due: {{ $item->due_date ? $item->due_date->format('M d') : 'TBD' }}</span>
-                            
+                            <span>Start: {{ $item->start_date ? $item->start_date->format('M d') : 'TBD' }}</span>
+                            <span>Due: {{ $item->due_date ? $item->due_date->format('M d') : 'TBD' }}</span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: flex-end; align-items: center; padding-top: 0.5rem; margin-top: 0.2rem;">
                             <div style="display: flex; gap: 0.4rem;">
-                                <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openEditChecklistModal({{ json_encode($item) }})">Edit</button>
+                                <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openShowChecklistModal({{ json_encode($item->load('comments.user')) }})">Details</button>
+                                <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openEditChecklistModal({{ json_encode($item->load('comments.user')) }})">Edit</button>
                                 <form action="{{ route('checklist.destroy', $item) }}" method="POST" onsubmit="return promptDelete('Checklist item {{ addslashes($item->title) }}', this);" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
@@ -159,7 +163,8 @@
                             <td style="padding: 0.75rem;">{{ $item->start_date ? $item->start_date->format('Y-m-d') : 'None' }}</td>
                             <td style="padding: 0.75rem;">{{ $item->due_date ? $item->due_date->format('Y-m-d') : 'None' }}</td>
                             <td style="padding: 0.75rem; text-align: right;">
-                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openEditChecklistModal({{ json_encode($item) }})">Edit</button>
+                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openShowChecklistModal({{ json_encode($item->load('comments.user')) }})">Details</button>
+                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openEditChecklistModal({{ json_encode($item->load('comments.user')) }})">Edit</button>
                                 <form action="{{ route('checklist.destroy', $item) }}" method="POST" onsubmit="return promptDelete('Checklist item {{ addslashes($item->title) }}', this);" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
@@ -291,10 +296,56 @@
                 <button type="submit" class="btn btn-primary">Update Item</button>
             </div>
         </form>
+
+    </div>
+</div>
+
+<!-- Modal: Show Checklist Modal -->
+<div id="showChecklistModal" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:900; backdrop-filter: blur(4px);">
+    <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 600px; border: 1px solid var(--border-color); max-height: 85vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <h3 style="font-weight: 800; color: var(--primary);" id="show_chk_title">Checklist Item Details</h3>
+            <button class="btn btn-secondary" onclick="document.getElementById('showChecklistModal').style.display='none'">✕</button>
+        </div>
+        
+        <div style="background: var(--bg-surface-elevated); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.85rem; margin-bottom: 0.75rem;">
+                <div><strong style="color: var(--text-muted);">Status:</strong> <span id="show_chk_status" style="font-weight: 700;"></span></div>
+                <div><strong style="color: var(--text-muted);">Priority:</strong> <span id="show_chk_priority" style="font-weight: 700; text-transform: capitalize;"></span></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.85rem; margin-bottom: 0.75rem;">
+                <div><strong style="color: var(--text-muted);">Start Date:</strong> <span id="show_chk_start_date"></span></div>
+                <div><strong style="color: var(--text-muted);">Due Date:</strong> <span id="show_chk_due_date"></span></div>
+            </div>
+            <div style="font-size: 0.85rem;">
+                <strong style="color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Description:</strong>
+                <div id="show_chk_description" style="color: var(--text-main); white-space: pre-wrap;"></div>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+        
+        <h4 style="font-weight: 700; color: var(--primary); margin-bottom: 1rem; font-size: 0.95rem;">Discussion Thread</h4>
+        <div id="checklistCommentsList" style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.5rem;">
+            <!-- Comments injected via JS -->
+        </div>
+        
+        <form action="" method="POST" id="checklistCommentForm">
+            @csrf
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <textarea name="content" required placeholder="Add a comment... (Markdown allowed)" rows="3" style="width: 100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);"></textarea>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">Post Comment</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
+    const currentUserId = {{ auth()->id() }};
+    const isSuperAdmin = {{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }};
+
     function openEditChecklistModal(item) {
         document.getElementById('editChecklistForm').action = '/checklist/' + item.id;
         document.getElementById('chk_title').value = item.title || '';
@@ -303,7 +354,56 @@
         document.getElementById('chk_start_date').value = item.start_date ? item.start_date.substring(0, 10) : '';
         document.getElementById('chk_due_date').value = item.due_date ? item.due_date.substring(0, 10) : '';
         document.getElementById('chk_description').value = item.description || '';
+
         document.getElementById('editChecklistModal').style.display = 'flex';
+    }
+
+    function openShowChecklistModal(item) {
+        document.getElementById('show_chk_title').innerText = item.title;
+        document.getElementById('show_chk_status').innerText = item.status;
+        document.getElementById('show_chk_priority').innerText = item.priority;
+        document.getElementById('show_chk_start_date').innerText = item.start_date ? item.start_date.substring(0, 10) : 'TBD';
+        document.getElementById('show_chk_due_date').innerText = item.due_date ? item.due_date.substring(0, 10) : 'TBD';
+        document.getElementById('show_chk_description').innerText = item.description || 'No description provided.';
+        
+        document.getElementById('checklistCommentForm').action = '/comments/checklist/' + item.id;
+        let commentsHtml = '';
+        if (item.comments && item.comments.length > 0) {
+            item.comments.forEach(c => {
+                const date = new Date(c.created_at).toLocaleString();
+                const userName = c.user ? c.user.name : 'Unknown';
+                
+                let actionsHtml = '';
+                if (c.user_id === currentUserId || isSuperAdmin) {
+                    actionsHtml = `
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button type="button" onclick="editComment(${c.id})" style="background:none; border:none; cursor:pointer; color:var(--text-muted);" title="Edit Comment">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            </button>
+                            <button type="button" onclick="deleteComment(${c.id})" style="background:none; border:none; cursor:pointer; color:var(--accent-rose);" title="Delete Comment">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                commentsHtml += `<div id="comment-wrapper-${c.id}" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 0.4rem;">
+                        <strong style="color: var(--primary);">${userName}</strong>
+                        <div style="display:flex; gap:0.75rem; align-items:center;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem;">${date}</span>
+                            ${actionsHtml}
+                        </div>
+                    </div>
+                    <div id="comment-content-${c.id}" style="color: var(--text-main); white-space: pre-wrap;">${c.content}</div>
+                </div>`;
+            });
+        } else {
+            commentsHtml = '<div style="color: var(--text-muted); font-size: 0.85rem;">No comments yet.</div>';
+        }
+        document.getElementById('checklistCommentsList').innerHTML = commentsHtml;
+
+        document.getElementById('showChecklistModal').style.display = 'flex';
     }
 
     function allowDrop(ev) {
@@ -334,5 +434,121 @@
             }
         });
     }
+
+    document.getElementById('checklistCommentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        const content = form.content.value;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Posting...';
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ content: content })
+        })
+        .then(res => res.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Post Comment';
+            
+            if (data.success) {
+                form.content.value = '';
+                const date = new Date(data.comment.created_at).toLocaleString();
+                const userName = data.comment.user.name;
+                
+                let actionsHtml = `
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button type="button" onclick="editComment(${data.comment.id})" style="background:none; border:none; cursor:pointer; color:var(--text-muted);" title="Edit Comment">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                        <button type="button" onclick="deleteComment(${data.comment.id})" style="background:none; border:none; cursor:pointer; color:var(--accent-rose);" title="Delete Comment">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+
+                const commentHtml = `<div id="comment-wrapper-${data.comment.id}" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 0.4rem;">
+                        <strong style="color: var(--primary);">${userName}</strong>
+                        <div style="display:flex; gap:0.75rem; align-items:center;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem;">${date}</span>
+                            ${actionsHtml}
+                        </div>
+                    </div>
+                    <div id="comment-content-${data.comment.id}" style="color: var(--text-main); white-space: pre-wrap;">${data.comment.content}</div>
+                </div>`;
+                
+                const list = document.getElementById('checklistCommentsList');
+                if (list.innerHTML.includes('No comments yet')) {
+                    list.innerHTML = '';
+                }
+                list.insertAdjacentHTML('beforeend', commentHtml);
+                list.scrollTop = list.scrollHeight;
+            } else {
+                alert('Error saving comment.');
+            }
+        })
+        .catch(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Post Comment';
+            alert('Network error.');
+        });
+    });
+
+    window.editComment = function(id) {
+        const contentDiv = document.getElementById('comment-content-' + id);
+        const currentText = contentDiv.innerText;
+        contentDiv.innerHTML = `
+            <textarea id="edit-comment-input-${id}" rows="2" style="width:100%; padding:0.4rem; border-radius:6px; border:1px solid var(--primary); background:var(--bg-surface); color:var(--text-main); margin-bottom:0.5rem;">${currentText}</textarea>
+            <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="cancelEditComment(${id}, \`${currentText.replace(/`/g, '\\`')}\`)">Cancel</button>
+                <button type="button" class="btn btn-primary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="saveEditComment(${id})">Save</button>
+            </div>
+        `;
+    };
+
+    window.cancelEditComment = function(id, originalText) {
+        document.getElementById('comment-content-' + id).innerText = originalText;
+    };
+
+    window.saveEditComment = function(id) {
+        const newText = document.getElementById('edit-comment-input-' + id).value;
+        fetch('/comments/' + id, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ content: newText })
+        }).then(res => res.json()).then(data => {
+            if(data.success) {
+                document.getElementById('comment-content-' + id).innerText = newText;
+            }
+        });
+    };
+
+    window.deleteComment = function(id) {
+        if(confirm('Delete this comment?')) {
+            fetch('/comments/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            }).then(res => res.json()).then(data => {
+                if(data.success) {
+                    const wrapper = document.getElementById('comment-wrapper-' + id);
+                    if(wrapper) wrapper.remove();
+                }
+            });
+        }
+    };
 </script>
 @endsection

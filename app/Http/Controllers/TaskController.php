@@ -78,11 +78,20 @@ class TaskController extends Controller
             'assignees.*' => 'exists:users,id',
         ]);
 
+        $latestTask = Task::withTrashed()->where('project_id', $project->id)->orderBy('id', 'desc')->first();
+        $nextNumber = 1;
+        if ($latestTask && $latestTask->code) {
+            $parts = explode('-', $latestTask->code);
+            $nextNumber = (int)end($parts) + 1;
+        }
+        $code = ($project->abbreviation ?: 'TASK') . '-' . $nextNumber;
+
         $task = Task::create([
             'project_id' => $project->id,
             'milestone_id' => $validated['milestone_id'] ?? null,
             'parent_id' => $validated['parent_id'] ?? null,
             'assigned_to' => !empty($validated['assignees']) ? $validated['assignees'][0] : null,
+            'code' => $code,
             'title' => $validated['title'],
             'type' => $validated['type'],
             'description' => $validated['description'] ?? null,

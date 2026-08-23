@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use App\Models\ActivityLog;
 use App\Models\ChecklistItem;
 use App\Models\Milestone;
@@ -11,6 +12,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\WikiBook;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class RecoveryController extends Controller
 {
@@ -68,6 +70,9 @@ class RecoveryController extends Controller
         foreach (ChecklistItem::onlyTrashed()->get() as $item) {
             $deletedRecords->push(['type' => 'checklist', 'id' => $item->id, 'name' => $item->title, 'deleted_at' => $item->deleted_at]);
         }
+        foreach (Comment::onlyTrashed()->get() as $item) {
+            $deletedRecords->push(['type' => 'comment', 'id' => $item->id, 'name' => Str::limit($item->content, 20), 'deleted_at' => $item->deleted_at]);
+        }
 
         return view('recovery.index', compact('logs', 'deletedRecords', 'actionFilter', 'user'));
     }
@@ -94,6 +99,7 @@ class RecoveryController extends Controller
             'wikibook' => WikiBook::class,
             'user' => User::class,
             'checklist' => ChecklistItem::class,
+            'comment' => Comment::class,
         ];
 
         $typeKey = strtolower($typeInput);

@@ -86,6 +86,9 @@
                                 </td>
                                 <td style="text-align: right;">
                                     <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+                                        <a href="{{ route('projects.show', $p) }}" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
+                                            Details
+                                        </a>
                                         <a href="{{ route('projects.kanban', $p) }}" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
                                             Kanban &rarr;
                                         </a>

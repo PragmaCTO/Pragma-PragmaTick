@@ -84,7 +84,14 @@
         <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow); margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 2.5px solid {{ $organization->color_code }}; padding-bottom: 0.6rem;">
                 <h3 style="font-size: 1.15rem; font-weight: 700;">Assigned Projects</h3>
-                <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $organization->projects->count() }} Projects</span>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $organization->projects->count() }} Projects</span>
+                    @if(auth()->user()->isSuperAdmin() || auth()->user()->isOrgAdmin($organization->id))
+                        <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;" onclick="document.getElementById('createProjectModal').style.display='flex'">
+                            + Create Project
+                        </button>
+                    @endif
+                </div>
             </div>
 
             <div class="data-table-container" style="padding: 0; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; box-shadow: none;">
@@ -121,9 +128,14 @@
                                     </strong>
                                 </td>
                                 <td style="text-align: right;">
-                                    <a href="{{ route('projects.kanban', $p) }}" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
-                                        Kanban &rarr;
-                                    </a>
+                                    <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+                                        <a href="{{ route('projects.show', $p) }}" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
+                                            Details
+                                        </a>
+                                        <a href="{{ route('projects.kanban', $p) }}" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
+                                            Kanban &rarr;
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -200,4 +212,50 @@
     </div>
 
 </div>
+
+<!-- Create Project Modal -->
+@if(auth()->user()->isSuperAdmin() || auth()->user()->isOrgAdmin($organization->id))
+<div id="createProjectModal" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:900; backdrop-filter: blur(4px);">
+    <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 500px; border: 1px solid var(--border-color);">
+        <h3 style="margin-bottom: 1rem; font-weight: 800; color: var(--primary);">+ Create New Project</h3>
+        
+        <form action="{{ route('projects.store') }}" method="POST">
+            @csrf
+            <input type="hidden" name="organization_id" value="{{ $organization->id }}">
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Project Name</label>
+                <input type="text" name="name" required placeholder="e.g. Website Redesign" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Abbreviation Code (Prefix)</label>
+                <input type="text" name="abbreviation" required placeholder="e.g. WEB" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
+                    <input type="date" name="start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                </div>
+                <div>
+                    <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Due Date</label>
+                    <input type="date" name="due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Description</label>
+                <textarea name="description" rows="3" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('createProjectModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 @endsection

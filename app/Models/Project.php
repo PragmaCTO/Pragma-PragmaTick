@@ -110,4 +110,12 @@ class Project extends Model
             $this->statuses()->create($data);
         }
     }
+
+    /**
+     * Project Comments thread.
+     */
+    public function comments(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
 }

@@ -52,6 +52,30 @@
         </div>
     </div>
     <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">{{ $project->description }}</p>
+
+    <div style="margin-top: 2rem; background: var(--bg-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color);">
+        <h3 style="font-weight: 800; color: var(--primary); margin-bottom: 1rem;">Project Discussion</h3>
+        <div style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            @forelse($project->comments as $comment)
+                <div style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 0.2rem;">
+                        <strong style="color: var(--primary);">{{ $comment->user->name ?? 'Unknown' }}</strong>
+                        <span style="color: var(--text-muted); font-size: 0.75rem;">{{ $comment->created_at->format('M d, Y H:i') }}</span>
+                    </div>
+                    <div style="color: var(--text-main);">{{ $comment->content }}</div>
+                </div>
+            @empty
+                <div style="color: var(--text-muted); font-size: 0.85rem;">No comments yet.</div>
+            @endforelse
+        </div>
+        <form action="{{ route('comments.store', ['type' => 'project', 'id' => $project->id]) }}" method="POST">
+            @csrf
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="text" name="content" required placeholder="Add a comment..." style="flex: 1; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                <button type="submit" class="btn btn-primary">Post</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Edit Project Modal -->

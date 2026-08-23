@@ -5,23 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-class TaskComment extends Model
+class Comment extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'task_id',
+        'commentable_id',
+        'commentable_type',
         'user_id',
         'content',
     ];
 
     /**
-     * Parent task.
+     * The owning commentable model.
      */
-    public function task(): BelongsTo
+    public function commentable(): MorphTo
     {
-        return $this->belongsTo(Task::class);
+        return $this->morphTo();
     }
 
     /**

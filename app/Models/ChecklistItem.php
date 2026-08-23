@@ -36,4 +36,12 @@ class ChecklistItem extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Comments thread.
+     */
+    public function comments(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
 }

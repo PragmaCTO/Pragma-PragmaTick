@@ -126,18 +126,18 @@ class CalendarController extends Controller
             'attendees' => 'nullable|array',
             'attendees.*' => 'exists:users,id',
             'override_conflict' => 'nullable|boolean',
+            'recurrence_pattern' => 'nullable|in:none,daily,weekly,monthly',
+            'recurrence_end_date' => 'nullable|date|after_or_equal:start_time',
         ]);
 
         $startTime = Carbon::parse($validated['start_time']);
         $endTime = Carbon::parse($validated['end_time']);
 
         $attendeeIds = $validated['attendees'] ?? [];
-        // Include organizer in target check
         if (!in_array($user->id, $attendeeIds)) {
             $attendeeIds[] = $user->id;
         }
 
-        // Scope check for Non-Super-Admins: Target attendees must belong to user's orgs
         if (!$user->isSuperAdmin()) {
             $allowedUserIds = User::whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $user->organizations()->pluck('organizations.id')))->pluck('id')->toArray();
             foreach ($validated['attendees'] ?? [] as $attId) {
@@ -147,22 +147,54 @@ class CalendarController extends Controller
             }
         }
 
-        // Overlap Conflict Checking Algorithm:
-        // Overlap occurs if: existing_start < new_end AND existing_end > new_start
-        $conflictingEvents = CalendarEvent::where(function ($q) use ($attendeeIds) {
-            $q->whereIn('organizer_id', $attendeeIds)
-              ->orWhereHas('attendees', fn($q2) => $q2->whereIn('users.id', $attendeeIds));
-        })
-        ->where(function ($q) use ($startTime, $endTime) {
-            $q->where('start_time', '<', $endTime)
-              ->where('end_time', '>', $startTime);
-        })
-        ->with('organizer')
-        ->get();
+        $pattern = $validated['recurrence_pattern'] ?? 'none';
+        $recurrenceEndDate = !empty($validated['recurrence_end_date']) ? Carbon::parse($validated['recurrence_end_date'])->endOfDay() : null;
 
-        // If conflicts found and user didn't explicitly override, return warning prompt
+        $occurrences = [];
+        $currentStart = $startTime->copy();
+        $currentEnd = $endTime->copy();
+
+        if ($pattern === 'none' || !$recurrenceEndDate) {
+            $occurrences[] = ['start' => $currentStart, 'end' => $currentEnd];
+        } else {
+            // Cap occurrences to prevent infinite loops / overload
+            $maxOccurrences = 100;
+            $count = 0;
+            while ($currentStart <= $recurrenceEndDate && $count < $maxOccurrences) {
+                $occurrences[] = ['start' => $currentStart->copy(), 'end' => $currentEnd->copy()];
+                if ($pattern === 'daily') {
+                    $currentStart->addDay();
+                    $currentEnd->addDay();
+                } elseif ($pattern === 'weekly') {
+                    $currentStart->addWeek();
+                    $currentEnd->addWeek();
+                } elseif ($pattern === 'monthly') {
+                    $currentStart->addMonth();
+                    $currentEnd->addMonth();
+                }
+                $count++;
+            }
+        }
+
+        // Check for conflicts across all occurrences
+        $conflictingEvents = collect();
+        foreach ($occurrences as $occ) {
+            $conflicts = CalendarEvent::where(function ($q) use ($attendeeIds) {
+                $q->whereIn('organizer_id', $attendeeIds)
+                  ->orWhereHas('attendees', fn($q2) => $q2->whereIn('users.id', $attendeeIds));
+            })
+            ->where(function ($q) use ($occ) {
+                $q->where('start_time', '<', $occ['end'])
+                  ->where('end_time', '>', $occ['start']);
+            })
+            ->with('organizer')
+            ->get();
+            $conflictingEvents = $conflictingEvents->merge($conflicts);
+        }
+        $conflictingEvents = $conflictingEvents->unique('id');
+
         if ($conflictingEvents->count() > 0 && empty($validated['override_conflict'])) {
-            $conflictDetails = $conflictingEvents->map(fn($e) => "'{$e->title}' ({$e->start_time->format('H:i')} - {$e->end_time->format('H:i')})")->implode(', ');
+            $conflictDetails = $conflictingEvents->map(fn($e) => "'{$e->title}' ({$e->start_time->format('M d H:i')} - {$e->end_time->format('H:i')})")->implode(', ');
             
             return redirect()->back()
                 ->withInput()
@@ -173,26 +205,28 @@ class CalendarController extends Controller
         }
 
         $isSuperAdminEvent = $user->isSuperAdmin();
-        $eventColor = $isSuperAdminEvent ? '#f43f5e' : '#008b8b'; // Super Admin personal events render in Rose color
+        $eventColor = $isSuperAdminEvent ? '#f43f5e' : '#008b8b';
 
-        $event = CalendarEvent::create([
-            'organizer_id' => $user->id,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'is_super_admin_event' => $isSuperAdminEvent,
-            'color' => $eventColor,
-        ]);
+        foreach ($occurrences as $occ) {
+            $event = CalendarEvent::create([
+                'organizer_id' => $user->id,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'start_time' => $occ['start'],
+                'end_time' => $occ['end'],
+                'is_super_admin_event' => $isSuperAdminEvent,
+                'color' => $eventColor,
+            ]);
 
-        if (!empty($validated['attendees'])) {
-            $event->attendees()->sync($validated['attendees']);
+            if (!empty($validated['attendees'])) {
+                $event->attendees()->sync($validated['attendees']);
+            }
         }
 
-        $user->logActivity('scheduled_event', "Scheduled event '{$event->title}' for {$event->start_time->format('Y-m-d H:i')}", $event);
+        $user->logActivity('scheduled_event', "Scheduled event '{$validated['title']}' (" . count($occurrences) . " occurrences)", null);
 
         return redirect()->route('calendar.index', ['month' => $startTime->month, 'year' => $startTime->year])
-            ->with('success', "Event '{$event->title}' scheduled successfully.");
+            ->with('success', "Event '{$validated['title']}' scheduled successfully (" . count($occurrences) . " occurrences).");
     }
 
     /**

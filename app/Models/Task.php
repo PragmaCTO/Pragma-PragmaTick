@@ -19,6 +19,7 @@ class Task extends Model
         'milestone_id',
         'parent_id',
         'assigned_to',
+        'code',
         'title',
         'type',
         'description',
@@ -36,15 +37,7 @@ class Task extends Model
         ];
     }
 
-    /**
-     * Auto-generated Task Code attribute (e.g. PRAG-12, ARCOS-5).
-     */
-    protected function code(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => ($this->project?->abbreviation ?: 'TASK') . '-' . $this->id,
-        );
-    }
+
 
     /**
      * Parent Project.
@@ -97,8 +90,8 @@ class Task extends Model
     /**
      * Task Comments thread.
      */
-    public function comments(): HasMany
+    public function comments(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
-        return $this->hasMany(TaskComment::class);
+        return $this->morphMany(Comment::class, 'commentable');
     }
 }

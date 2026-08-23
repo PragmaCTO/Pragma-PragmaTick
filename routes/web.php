@@ -11,7 +11,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectStatusController;
 use App\Http\Controllers\RecoveryController;
-use App\Http\Controllers\TaskCommentController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WikiController;
@@ -106,8 +106,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/milestones/{milestone}', [MilestoneController::class, 'update'])->name('milestones.update');
     Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->name('milestones.destroy');
 
-    // Task Comments Route
-    Route::post('/tasks/{task}/comments', [TaskCommentController::class, 'store'])->name('comments.store');
+    // Universal Comments Route
+    Route::post('/comments/{type}/{id}', [CommentController::class, 'store'])->name('comments.store');
+    Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
     // Kanban Custom Status Columns Routes
     Route::post('/projects/{project}/statuses', [ProjectStatusController::class, 'store'])->name('statuses.store');

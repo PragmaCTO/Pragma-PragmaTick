@@ -18,7 +18,7 @@ class ChecklistController extends Controller
 
         $viewMode = $request->input('view', 'kanban'); // 'kanban' or 'table'
 
-        $items = $user->checklistItems()->latest()->get();
+        $items = $user->checklistItems()->with('comments.user')->latest()->get();
 
         // 4 Strict Kanban Statuses: To-Do, In-Progress, Completed, Delayed
         $statuses = ['To-Do', 'In-Progress', 'Completed', 'Delayed'];
