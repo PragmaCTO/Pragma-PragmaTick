@@ -136,6 +136,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::post('/calendar', [CalendarController::class, 'store'])->name('calendar.store');
     Route::get('/calendar/{event}', [CalendarController::class, 'show'])->name('calendar.show');
+    Route::get('/calendar/{event}/edit', [CalendarController::class, 'edit'])->name('calendar.edit');
+    Route::put('/calendar/{event}', [CalendarController::class, 'update'])->name('calendar.update');
     Route::delete('/calendar/{event}', [CalendarController::class, 'destroy'])->name('calendar.destroy');
 
     // External Contacts Routes (Strictly Restricted to Super Admins Only)

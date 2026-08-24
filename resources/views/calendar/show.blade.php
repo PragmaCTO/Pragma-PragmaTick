@@ -26,6 +26,9 @@
             &larr; Back to Calendar
         </a>
         @if($user->isSuperAdmin() || $event->organizer_id === $user->id)
+            <a href="{{ route('calendar.edit', $event) }}" class="btn btn-primary" style="background-color: var(--primary);">
+                Edit Event
+            </a>
             <form action="{{ route('calendar.destroy', $event) }}" method="POST" onsubmit="return promptDelete('Calendar Event {{ addslashes($event->title) }}', this);" style="margin:0;">
                 @csrf
                 @method('DELETE')
@@ -103,7 +106,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem;">
                 <h3 style="font-size: 1.1rem; font-weight: 800;">Meeting Attendees</h3>
                 <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">
-                    {{ $event->attendees->count() + 1 }} People
+                    {{ $event->attendees->count() }} People
                 </strong>
             </div>
 

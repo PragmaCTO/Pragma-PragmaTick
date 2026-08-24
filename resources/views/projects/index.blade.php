@@ -81,7 +81,7 @@
                                 </td>
                                 <td>
                                     <strong style="font-size: 0.85rem; color: var(--text-main);">
-                                        {{ $p->tasks->count() }} Tasks
+                                        {{ $p->tasks_count }} Tasks
                                     </strong>
                                 </td>
                                 <td style="text-align: right;">

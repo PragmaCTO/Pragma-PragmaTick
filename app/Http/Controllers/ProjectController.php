@@ -19,7 +19,7 @@ class ProjectController extends Controller
         $user = auth()->user();
 
         if ($user->isSuperAdmin()) {
-            $projects = Project::with(['organization', 'users', 'tasks', 'milestones'])->get();
+            $projects = Project::with(['organization', 'users'])->withCount(['tasks', 'milestones'])->get();
             $organizations = Organization::with('projects')->get();
         } else {
             // Org Admins see all projects in their assigned orgs
@@ -30,7 +30,8 @@ class ProjectController extends Controller
 
             $projects = Project::whereIn('organization_id', $adminOrgIds)
                 ->orWhereIn('id', $assignedProjectIds)
-                ->with(['organization', 'users', 'tasks', 'milestones'])
+                ->with(['organization', 'users'])
+                ->withCount(['tasks', 'milestones'])
                 ->get();
 
             $organizations = Organization::whereIn('id', $adminOrgIds)

@@ -249,6 +249,75 @@ class CalendarController extends Controller
     }
 
     /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(CalendarEvent $event)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (!$user->isSuperAdmin() && $event->organizer_id !== $user->id) {
+            abort(403, 'Only the organizer or a Super Admin can edit this event.');
+        }
+
+        if ($user->isSuperAdmin()) {
+            $schedulableUsers = User::orderBy('name')->get();
+        } else {
+            $orgIds = $user->organizations()->pluck('organizations.id');
+            $schedulableUsers = User::whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $orgIds))
+                ->orderBy('name')
+                ->get();
+        }
+
+        $event->load('attendees');
+
+        return view('calendar.edit', compact('event', 'schedulableUsers', 'user'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, CalendarEvent $event)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (!$user->isSuperAdmin() && $event->organizer_id !== $user->id) {
+            abort(403, 'Only the organizer or a Super Admin can edit this event.');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+            'attendees' => 'nullable|array',
+            'attendees.*' => 'exists:users,id',
+        ]);
+
+        $event->update([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+        ]);
+
+        if (isset($validated['attendees'])) {
+            $attendeeIds = $validated['attendees'];
+            if (!in_array($event->organizer_id, $attendeeIds)) {
+                $attendeeIds[] = $event->organizer_id;
+            }
+            $event->attendees()->sync($attendeeIds);
+        } else {
+            $event->attendees()->sync([$event->organizer_id]);
+        }
+
+        $user->logActivity('updated', "Updated calendar event '{$event->title}'", $event);
+
+        return redirect()->route('calendar.show', $event)->with('success', "Event updated successfully.");
+    }
+
+    /**
      * Soft delete calendar event.
      */
     public function destroy(CalendarEvent $event)
