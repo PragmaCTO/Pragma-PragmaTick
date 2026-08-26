@@ -3,10 +3,6 @@
 @section('title', 'Calendar & Scheduling - PragmaTick Command Center')
 
 @section('content')
-<!-- Select2 & jQuery CDN -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <style>
     .calendar-header-bar {
@@ -214,7 +210,7 @@
                 Monthly Grid
             </button>
             <button class="btn btn-secondary" id="btnTimelineView" onclick="switchCalendarView('timeline')" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
-                Today's Timeline ({{ $todayEvents->count() }})
+                Timeline ({{ $todayEvents->count() }})
             </button>
         </div>
 
@@ -318,100 +314,182 @@
     </div>
 </div>
 
-<!-- Mode 2: Detailed Today's Hourly Timeline Stream -->
+<!-- Mode 2: Outlook-Style Visual Hourly Schedule Grid -->
 <div id="todayTimelineContainer" style="display: none; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow);">
     
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
         <div>
             <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--primary);">
-                Today's Schedule Stream — {{ now()->format('l, F j, Y') }}
+                Schedule Stream — {{ $timelineDate->format('l, F j, Y') }}
             </h2>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.15rem;">
-                Detailed hour-by-hour timeline stream for personal and team meetings
+                Outlook-style visual timeline schedule for personal and team meetings
             </p>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <span class="tag tag-cyan" style="font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.75rem;">
-                LIVE TIME: {{ now()->format('h:i A') }}
-            </span>
-            <strong style="font-size: 0.88rem; color: var(--primary);">{{ $todayEvents->count() }} Events Today</strong>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">Select Date:</label>
+                <input type="date" value="{{ $timelineDateStr }}" onchange="window.location.href='{{ route('calendar.index') }}?view=timeline&date=' + this.value" style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface-elevated); color: var(--text-main); font-weight: 600; font-size: 0.82rem;">
+            </div>
+            @if($timelineDateStr === now()->format('Y-m-d'))
+                <span class="tag tag-cyan" style="font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.75rem;">
+                    LIVE TIME: {{ now()->format('h:i A') }}
+                </span>
+            @endif
+            <button type="button" class="btn btn-primary" onclick="openScheduleModal('{{ $timelineDateStr }}T09:00')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                + Schedule Event
+            </button>
         </div>
     </div>
 
-    <!-- 24-Hour Timeline Matrix (06:00 AM to 11:00 PM) -->
-    <div style="display: flex; flex-direction: column;">
-        @php
-            $currentHour = now()->hour;
-        @endphp
-        @for($h = 6; $h <= 23; $h++)
-            @php
-                $hourFormatted = sprintf('%02d:00', $h);
-                $hourLabel = Carbon\Carbon::createFromTime($h, 0)->format('h:00 A');
-                $isCurrentHour = ($h === $currentHour);
-                
-                // Filter events that fall in or overlap with this hour slot
-                $slotEvents = $todayEvents->filter(function($e) use ($h) {
-                    return $e->start_time->hour === $h || ($e->start_time->hour <= $h && $e->end_time->hour > $h);
-                });
-            @endphp
+    @php
+        $rowHeight = 70; // 70px per 1 hour slot
+        $startHour = 6;
+        $endHour = 23;
+        $totalHours = $endHour - $startHour + 1;
+        $totalHeight = $totalHours * $rowHeight;
 
-            <div class="timeline-hour-row {{ $isCurrentHour ? 'current-hour' : '' }}">
-                <div class="timeline-hour-label">
-                    {{ $hourLabel }}
-                    @if($isCurrentHour)
-                        <div style="font-size: 0.65rem; color: var(--primary); font-weight: 800;">NOW</div>
+        $timelineEventsList = $todayEvents->map(function($e) use ($startHour, $endHour) {
+            $startMins = max(0, ($e->start_time->hour - $startHour) * 60 + $e->start_time->minute);
+            $endMins = min(($endHour - $startHour + 1) * 60, ($e->end_time->hour - $startHour) * 60 + $e->end_time->minute);
+            if ($endMins <= $startMins) $endMins = $startMins + 30;
+            return [
+                'event' => $e,
+                'startMins' => $startMins,
+                'endMins' => $endMins,
+                'topPx' => ($startMins / 60) * 70,
+                'heightPx' => max(42, (($endMins - $startMins) / 60) * 70),
+            ];
+        })->sortBy('startMins')->values();
+
+        $positionedEvents = [];
+        foreach ($timelineEventsList as $item) {
+            $overlaps = $timelineEventsList->filter(function($other) use ($item) {
+                return $item['startMins'] < $other['endMins'] && $item['endMins'] > $other['startMins'];
+            })->values();
+
+            $totalCols = max(1, $overlaps->count());
+            $colIndex = $overlaps->search(fn($o) => $o['event']->id === $item['event']->id);
+            if ($colIndex === false) $colIndex = 0;
+
+            $item['colIndex'] = $colIndex;
+            $item['totalCols'] = $totalCols;
+            $positionedEvents[] = $item;
+        }
+
+        $isToday = ($timelineDateStr === now()->format('Y-m-d'));
+        $currentHour = now()->hour;
+        $currentMinute = now()->minute;
+        $nowTopPx = (($currentHour - $startHour) * 60 + $currentMinute) / 60 * $rowHeight;
+        $isNowInRange = ($isToday && $currentHour >= $startHour && $currentHour <= $endHour);
+    @endphp
+
+    <!-- Visual Schedule Grid Container -->
+    <div style="display: flex; position: relative; width: 100%; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-surface-elevated);">
+        
+        <!-- Left Column: Hourly Time Labels -->
+        <div style="width: 85px; flex-shrink: 0; background: var(--bg-surface); border-right: 1px solid var(--border-color); display: flex; flex-direction: column;">
+            @for($h = $startHour; $h <= $endHour; $h++)
+                @php
+                    $hourLabel = Carbon\Carbon::createFromTime($h, 0)->format('h:00 A');
+                    $isCurrent = ($isToday && $h === $currentHour);
+                @endphp
+                <div style="height: {{ $rowHeight }}px; border-bottom: 1px solid var(--border-color); padding: 0.4rem 0.6rem; font-size: 0.76rem; font-weight: 700; color: {{ $isCurrent ? 'var(--primary)' : 'var(--text-muted)' }}; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
+                    <span>{{ $hourLabel }}</span>
+                    @if($isCurrent)
+                        <span style="font-size: 0.62rem; color: var(--accent-rose); font-weight: 800;">NOW</span>
                     @endif
                 </div>
+            @endfor
+        </div>
 
-                <div style="display: flex; flex-direction: column; gap: 0.6rem;">
-                    @forelse($slotEvents as $sEvt)
-                        @php
-                            $isSA = $sEvt->is_super_admin_event || ($sEvt->organizer && $sEvt->organizer->isSuperAdmin());
-                        @endphp
-                        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-left: 4px solid {{ $sEvt->color }}; border-radius: 8px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                    <strong style="font-size: 0.98rem;">
-                                        <a href="{{ route('calendar.show', $sEvt) }}" style="color: var(--text-main); text-decoration: none;">
-                                            {{ $sEvt->title }}
-                                        </a>
-                                    </strong>
-                                    @if($isSA)
-                                        <span class="tag tag-rose" style="font-size: 0.68rem;">[SUPER ADMIN]</span>
-                                    @endif
-                                </div>
+        <!-- Right Column: Timeline Slot Rows & Floating Event Cards -->
+        <div style="position: relative; flex: 1; height: {{ $totalHeight }}px; background: var(--bg-surface-elevated);">
+            
+            <!-- Hourly Horizontal Grid Background Lines -->
+            @for($h = $startHour; $h <= $endHour; $h++)
+                @php
+                    $slotTimeStr = $timelineDateStr . 'T' . sprintf('%02d:00', $h);
+                @endphp
+                <div style="position: absolute; top: {{ ($h - $startHour) * $rowHeight }}px; left: 0; right: 0; height: {{ $rowHeight }}px; border-bottom: 1px solid var(--border-color); opacity: 0.35; box-sizing: border-box; cursor: pointer;" 
+                     onclick="openScheduleModal('{{ $slotTimeStr }}')" title="Click to schedule meeting at {{ Carbon\Carbon::createFromTime($h, 0)->format('h:00 A') }}">
+                </div>
+            @endfor
 
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; display: flex; gap: 1rem; align-items: center;">
-                                    <span>Time: <strong style="color: var(--primary);">{{ $sEvt->start_time->format('h:i A') }} - {{ $sEvt->end_time->format('h:i A') }}</strong></span>
-                                    <span>Organizer: <strong>{{ $sEvt->organizer->name }}</strong></span>
-                                    <span>Attendees: <strong>{{ $sEvt->attendees->count() }}</strong></span>
-                                </div>
+            <!-- Live Red Time Indicator Line (If Today) -->
+            @if($isNowInRange)
+                <div style="position: absolute; top: {{ $nowTopPx }}px; left: 0; right: 0; height: 2px; background: #f43f5e; z-index: 25; pointer-events: none;">
+                    <div style="position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #f43f5e;"></div>
+                </div>
+            @endif
 
-                                @if($sEvt->description)
-                                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem;">
-                                        {{ Str::limit($sEvt->description, 110) }}
-                                    </p>
+            <!-- Positioned Event Cards (Multi-hour Spanning & Overlap Aware) -->
+            @forelse($positionedEvents as $pEvt)
+                @php
+                    $e = $pEvt['event'];
+                    $widthPct = 100 / $pEvt['totalCols'];
+                    $leftPct = $pEvt['colIndex'] * $widthPct;
+                    $isSA = $e->is_super_admin_event || ($e->organizer && $e->organizer->isSuperAdmin());
+                    $minutes = $e->start_time->diffInMinutes($e->end_time);
+                    $durationStr = $minutes >= 60 ? (round($minutes / 60, 1) . ' hrs') : ($minutes . ' mins');
+                    $isShort = ($pEvt['heightPx'] < 70);
+                    $cardHeight = max(48, $pEvt['heightPx']);
+                    $tooltipText = $e->title . ' (' . $e->start_time->format('h:i A') . ' - ' . $e->end_time->format('h:i A') . ' - ' . $durationStr . ')' . ($e->organizer ? "\nOrganizer: " . $e->organizer->name : '') . ($e->description ? "\n" . $e->description : '');
+                @endphp
+                <div style="position: absolute; top: {{ $pEvt['topPx'] }}px; height: {{ $cardHeight }}px; left: calc({{ $leftPct }}% + 3px); width: calc({{ $widthPct }}% - 6px); background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 5px solid {{ $e->color }}; border-radius: 8px; padding: 0.35rem 0.6rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
+                     onclick="window.location.href='{{ route('calendar.show', $e) }}'"
+                     title="{{ $tooltipText }}"
+                     onmouseenter="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.2)';"
+                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';">
+                    
+                    @if($isShort)
+                        <!-- Compact Layout for Short Meetings (< 1 Hour) -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0; flex: 1;">
+                                <strong style="font-size: 0.81rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main);">
+                                    {{ $e->title }}
+                                </strong>
+                                @if($isSA)
+                                    <span class="tag tag-rose" style="font-size: 0.58rem; padding: 0.05rem 0.2rem; flex-shrink: 0;">[SA]</span>
                                 @endif
                             </div>
-
-                            <a href="{{ route('calendar.show', $sEvt) }}" class="btn btn-primary" style="font-size: 0.76rem; padding: 0.25rem 0.65rem;">
-                                View Details &rarr;
-                            </a>
+                            <span style="font-size: 0.72rem; color: var(--primary); font-weight: 700; flex-shrink: 0; white-space: nowrap;">
+                                {{ $e->start_time->format('h:i A') }} ({{ $durationStr }})
+                            </span>
                         </div>
-                    @empty
-                        <div style="display: flex; justify-content: space-between; align-items: center; opacity: 0.6;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No scheduled meetings</span>
-                            @php
-                                $slotTimeStr = now()->format('Y-m-d') . 'T' . sprintf('%02d:00', $h);
-                            @endphp
-                            <button type="button" class="btn btn-secondary" onclick="openScheduleModal('{{ $slotTimeStr }}')" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">
-                                + Schedule
-                            </button>
+                    @else
+                        <!-- Full Expanded Layout for Multi-hour Meetings (>= 1 Hour) -->
+                        <div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;">
+                                <strong style="font-size: 0.86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main);">
+                                    {{ $e->title }}
+                                </strong>
+                                @if($isSA)
+                                    <span class="tag tag-rose" style="font-size: 0.6rem; padding: 0.05rem 0.25rem;">[SA]</span>
+                                @endif
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--primary); font-weight: 700; margin-top: 0.15rem;">
+                                {{ $e->start_time->format('h:i A') }} - {{ $e->end_time->format('h:i A') }} ({{ $durationStr }})
+                            </div>
+                            @if($cardHeight >= 85)
+                                <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    Organizer: <strong>{{ $e->organizer->name }}</strong>
+                                </div>
+                            @endif
                         </div>
-                    @endforelse
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.15rem;">
+                            <span style="font-size: 0.7rem; color: var(--text-muted);">👥 {{ $e->attendees_count ?? $e->attendees->count() }} attendees</span>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--primary);">View Details &rarr;</span>
+                        </div>
+                    @endif
                 </div>
-            </div>
-        @endfor
+            @empty
+                <div style="position: absolute; top: 40%; left: 0; right: 0; text-align: center; color: var(--text-muted); font-style: italic; font-size: 0.9rem;">
+                    No meetings scheduled for {{ $timelineDate->format('F j, Y') }}. Click anywhere on the timeline to schedule one!
+                </div>
+            @endforelse
+        </div>
     </div>
 </div>
 
@@ -496,6 +574,13 @@
         }
     }
 
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('view') === 'timeline' || urlParams.has('date')) {
+            switchCalendarView('timeline');
+        }
+    });
+
     function openScheduleModal(startIso) {
         if (startIso) {
             document.getElementById('inputStartTime').value = startIso;
@@ -520,7 +605,9 @@
             endInput.setAttribute('required', 'required');
         }
     }
+</script>
 
+<script>
     $(document).ready(function() {
         if ($.fn.select2) {
             $('.select2-filter').select2({

@@ -215,7 +215,7 @@
                             </div>
 
                             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; margin-top: 0.2rem; font-size: 0.75rem; color: var(--text-muted);">
-                                <span>Assignees: {{ $task->assignees->count() }}</span>
+                                <span>Assignees: {{ $task->assignees_count ?? $task->assignees->count() }}</span>
                                 <div style="display: flex; gap: 0.35rem;">
                                     <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openShowTaskModal({{ json_encode($task->load(['assignees', 'comments.user'])) }})">Details</button>
                                     @can('update', $task)
@@ -612,18 +612,28 @@
         document.getElementById('editTaskModal').style.display = 'flex';
     }
 
+    window.taskStore = window.taskStore || {};
+    let activeOpenTaskId = null;
+
     function openShowTaskModal(task) {
-        document.getElementById('show_task_title').innerText = '[' + task.code + '] ' + task.title;
-        document.getElementById('show_task_status').innerText = task.status;
-        document.getElementById('show_task_priority').innerText = task.priority;
-        document.getElementById('show_task_start_date').innerText = task.start_date ? task.start_date.substring(0, 10) : 'TBD';
-        document.getElementById('show_task_due_date').innerText = task.due_date ? task.due_date.substring(0, 10) : 'TBD';
-        document.getElementById('show_task_description').innerText = task.description || 'No description provided.';
+        window.taskStore = window.taskStore || {};
+        if (!window.taskStore[task.id]) {
+            window.taskStore[task.id] = JSON.parse(JSON.stringify(task));
+        }
+        activeOpenTaskId = task.id;
+        const taskData = window.taskStore[task.id];
+
+        document.getElementById('show_task_title').innerText = '[' + taskData.code + '] ' + taskData.title;
+        document.getElementById('show_task_status').innerText = taskData.status;
+        document.getElementById('show_task_priority').innerText = taskData.priority;
+        document.getElementById('show_task_start_date').innerText = taskData.start_date ? taskData.start_date.substring(0, 10) : 'TBD';
+        document.getElementById('show_task_due_date').innerText = taskData.due_date ? taskData.due_date.substring(0, 10) : 'TBD';
+        document.getElementById('show_task_description').innerText = taskData.description || 'No description provided.';
         
-        document.getElementById('taskCommentForm').action = '/comments/task/' + task.id;
+        document.getElementById('taskCommentForm').action = '/comments/task/' + taskData.id;
         let commentsHtml = '';
-        if (task.comments && task.comments.length > 0) {
-            task.comments.forEach(c => {
+        if (taskData.comments && taskData.comments.length > 0) {
+            taskData.comments.forEach(c => {
                 const date = new Date(c.created_at).toLocaleString();
                 const userName = c.user ? c.user.name : 'Unknown';
                 
@@ -677,7 +687,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({ status: targetStatus })
         })
@@ -688,7 +699,8 @@
             }
         });
     }
-
+</script>
+<script>
     $(document).ready(function() {
         if ($.fn.select2) {
             $('.select2-assignees').select2({
@@ -706,8 +718,8 @@
             });
         }
     });
-
-    document.getElementById('taskCommentForm').addEventListener('submit', function(e) {
+</script>
+<script>    document.getElementById('taskCommentForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const form = this;
         const content = form.content.value;
@@ -731,8 +743,15 @@
             
             if (data.success) {
                 form.content.value = '';
+                if (activeOpenTaskId && window.taskStore[activeOpenTaskId]) {
+                    if (!window.taskStore[activeOpenTaskId].comments) {
+                        window.taskStore[activeOpenTaskId].comments = [];
+                    }
+                    window.taskStore[activeOpenTaskId].comments.push(data.comment);
+                }
+                
                 const date = new Date(data.comment.created_at).toLocaleString();
-                const userName = data.comment.user.name;
+                const userName = data.comment.user ? data.comment.user.name : 'Unknown';
                 let actionsHtml = `
                     <div style="display:flex; gap:0.5rem; align-items:center;">
                         <button type="button" onclick="editComment(${data.comment.id})" style="background:none; border:none; cursor:pointer; color:var(--text-muted);" title="Edit Comment">
@@ -800,6 +819,10 @@
         }).then(res => res.json()).then(data => {
             if(data.success) {
                 document.getElementById('comment-content-' + id).innerText = newText;
+                if (activeOpenTaskId && window.taskStore[activeOpenTaskId] && window.taskStore[activeOpenTaskId].comments) {
+                    const targetC = window.taskStore[activeOpenTaskId].comments.find(c => c.id === id);
+                    if (targetC) targetC.content = newText;
+                }
             }
         });
     };
@@ -816,6 +839,9 @@
                 if(data.success) {
                     const wrapper = document.getElementById('comment-wrapper-' + id);
                     if(wrapper) wrapper.remove();
+                    if (activeOpenTaskId && window.taskStore[activeOpenTaskId] && window.taskStore[activeOpenTaskId].comments) {
+                        window.taskStore[activeOpenTaskId].comments = window.taskStore[activeOpenTaskId].comments.filter(c => c.id !== id);
+                    }
                 }
             });
         }

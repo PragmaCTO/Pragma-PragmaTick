@@ -29,7 +29,7 @@ class TaskController extends Controller
             'organization',
             'statuses',
             'milestones.assignees',
-            'tasks' => fn($q) => $q->with(['assignees', 'parent', 'subtasks', 'milestone', 'comments.user']),
+            'tasks' => fn($q) => $q->with(['assignees', 'parent', 'subtasks', 'milestone', 'comments.user'])->withCount(['assignees', 'comments']),
             'users'
         ]);
 

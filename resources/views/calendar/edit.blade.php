@@ -3,6 +3,56 @@
 @section('title', 'Edit Event - ' . $event->title)
 
 @section('content')
+<!-- Custom Select2 Theme Integration -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--multiple {
+        background-color: var(--bg-surface-elevated) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        min-height: 44px !important;
+        padding: 4px 8px !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: rgba(32, 178, 170, 0.15) !important;
+        border: 1px solid var(--primary) !important;
+        color: var(--primary) !important;
+        border-radius: 6px !important;
+        font-size: 0.82rem !important;
+        font-weight: 700 !important;
+        padding: 2px 8px !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: var(--primary) !important;
+        margin-right: 5px !important;
+        border-right: 1px solid rgba(32, 178, 170, 0.3) !important;
+        padding-right: 4px !important;
+    }
+    .select2-dropdown {
+        background-color: var(--bg-surface) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+        z-index: 9999 !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--primary) !important;
+        color: #ffffff !important;
+    }
+    .select2-container--default .select2-results__option[aria-selected=true] {
+        background-color: var(--bg-surface-elevated) !important;
+        color: var(--primary) !important;
+    }
+    .select2-results__option {
+        color: var(--text-main) !important;
+        font-size: 0.85rem !important;
+        padding: 6px 12px !important;
+    }
+    .select2-search__field {
+        color: var(--text-main) !important;
+    }
+</style>
+
 <div style="margin-bottom: 1.5rem;">
     <a href="{{ route('calendar.show', $event) }}" style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.88rem;">
         &larr; Back to Event Details
@@ -40,15 +90,14 @@
         </div>
 
         <div style="margin-bottom: 1.5rem;">
-            <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main);">Meeting Attendees</label>
-            <select name="attendees[]" multiple style="width:100%; padding:0.75rem; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main); min-height: 120px;">
+            <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main);">Select Meeting Attendees (Org Scope)</label>
+            <select name="attendees[]" class="select2-edit-attendees" multiple style="width:100%;">
                 @foreach($schedulableUsers as $u)
                     <option value="{{ $u->id }}" {{ $event->attendees->contains('id', $u->id) ? 'selected' : '' }}>
                         {{ $u->name }} ({{ $u->email }})
                     </option>
                 @endforeach
             </select>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">Hold CTRL (or CMD) to select multiple users. Organizer is always included.</p>
         </div>
 
         <div style="margin-bottom: 2rem;">
@@ -62,4 +111,18 @@
         </div>
     </form>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        if ($.fn.select2) {
+            $('.select2-edit-attendees').select2({
+                placeholder: "Search and select meeting attendees...",
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    });
+</script>
 @endsection

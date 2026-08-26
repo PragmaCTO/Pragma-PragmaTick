@@ -106,7 +106,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem;">
                 <h3 style="font-size: 1.1rem; font-weight: 800;">Meeting Attendees</h3>
                 <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">
-                    {{ $event->attendees->count() }} People
+                    {{ $event->attendees_count ?? $event->attendees->count() }} People
                 </strong>
             </div>
 

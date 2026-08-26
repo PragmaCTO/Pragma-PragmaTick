@@ -131,7 +131,10 @@
 
 <div class="login-card">
     <div class="login-brand">
-        <h1><span style="color: var(--primary);">Pragma</span>Tick</h1>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+            <img src="{{ asset('icon.png') }}" alt="PragmaTick Logo" style="height: 42px; width: auto; object-fit: contain;">
+            <h1 style="margin: 0;"><span style="color: var(--primary);">Pragma</span>Tick</h1>
+        </div>
         <p>Enter your credentials to access your workspace</p>
     </div>
 

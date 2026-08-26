@@ -2,18 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreWikiRequest;
+use App\Http\Requests\UpdateWikiRequest;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\WikiBook;
 use App\Models\WikiChapter;
 use App\Models\WikiPage;
+use App\Services\WikiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 
 class WikiController extends Controller
 {
+    protected WikiService $wikiService;
+
+    public function __construct(WikiService $wikiService)
+    {
+        $this->wikiService = $wikiService;
+    }
+
     /**
      * Display a listing of accessible Wiki Books.
      */
@@ -23,9 +32,9 @@ class WikiController extends Controller
         $user = auth()->user();
 
         if ($user->isSuperAdmin()) {
-            $books = WikiBook::with(['owner', 'author', 'chapters.pages'])->get();
+            $books = WikiBook::with(['owner', 'author', 'chapters.pages'])->withCount('chapters')->get();
             $organizations = Organization::all();
-            $projects = Project::all();
+            $projects = Project::with('organization')->get();
         } else {
             $userOrgIds = $user->organizations()->pluck('organizations.id');
             $userProjIds = $user->projects()->pluck('projects.id');
@@ -35,10 +44,10 @@ class WikiController extends Controller
                   ->orWhere(fn($q2) => $q2->where('owner_type', Project::class)->whereIn('owner_id', $userProjIds))
                   ->orWhere('author_id', $user->id)
                   ->orWhereHas('sharedUsers', fn($q3) => $q3->where('users.id', $user->id));
-            })->with(['owner', 'author', 'chapters.pages'])->get();
+            })->with(['owner', 'author', 'chapters.pages'])->withCount('chapters')->get();
 
             $organizations = Organization::whereIn('id', $userOrgIds)->get();
-            $projects = Project::whereIn('id', $userProjIds)->get();
+            $projects = Project::with('organization')->whereIn('id', $userProjIds)->get();
         }
 
         $allUsers = User::orderBy('name')->get();
@@ -49,44 +58,9 @@ class WikiController extends Controller
     /**
      * Store a newly created WikiBook.
      */
-    public function storeBook(Request $request)
+    public function storeBook(StoreWikiRequest $request)
     {
-        $user = auth()->user();
-        if (!$user) {
-            abort(403, 'Unauthorized.');
-        }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'owner_kind' => 'required|in:organization,project,private',
-            'owner_id' => 'nullable|integer',
-            'is_private' => 'nullable|boolean',
-        ]);
-
-        $ownerType = null;
-        $ownerId = null;
-
-        if ($validated['owner_kind'] === 'organization' && !empty($validated['owner_id'])) {
-            $ownerType = Organization::class;
-            $ownerId = $validated['owner_id'];
-        } elseif ($validated['owner_kind'] === 'project' && !empty($validated['owner_id'])) {
-            $ownerType = Project::class;
-            $ownerId = $validated['owner_id'];
-        }
-
-        $book = WikiBook::create([
-            'author_id' => $user->id,
-            'owner_type' => $ownerType,
-            'owner_id' => $ownerId,
-            'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']),
-            'description' => $validated['description'] ?? null,
-            'is_private' => $validated['owner_kind'] === 'private' || !empty($validated['is_private']),
-        ]);
-
-        $user->logActivity('created', "Created Wiki Book '{$book->title}'", $book);
-
+        $book = $this->wikiService->createBook($request->validated(), auth()->user());
         return redirect()->route('wikis.showBook', $book)->with('success', "Wiki Book '{$book->title}' created.");
     }
 
@@ -109,29 +83,9 @@ class WikiController extends Controller
     /**
      * Store a new Chapter under a WikiBook.
      */
-    public function storeChapter(Request $request, WikiBook $book)
+    public function storeChapter(StoreWikiRequest $request, WikiBook $book)
     {
-        $user = auth()->user();
-        if ($user && !Gate::allows('update', $book)) {
-            abort(403, 'Unauthorized to add chapters to this Wiki Book.');
-        }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-        ]);
-
-        $maxOrder = $book->chapters()->max('order') ?? 0;
-
-        $chapter = $book->chapters()->create([
-            'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']),
-            'description' => $validated['description'] ?? null,
-            'order' => $maxOrder + 1,
-        ]);
-
-        $user->logActivity('created', "Created Wiki Chapter '{$chapter->title}' in book {$book->title}", $chapter);
-
+        $chapter = $this->wikiService->createChapter($book, $request->validated(), auth()->user());
         return redirect()->back()->with('success', "Chapter '{$chapter->title}' added.");
     }
 
@@ -156,31 +110,9 @@ class WikiController extends Controller
     /**
      * Store a new Wiki Page.
      */
-    public function storePage(Request $request, WikiChapter $chapter)
+    public function storePage(StoreWikiRequest $request, WikiChapter $chapter)
     {
-        $user = auth()->user();
-        $chapter->load('book');
-        if ($user && !Gate::allows('update', $chapter->book)) {
-            abort(403, 'Unauthorized.');
-        }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-        ]);
-
-        $maxOrder = $chapter->pages()->max('order') ?? 0;
-
-        $page = $chapter->pages()->create([
-            'author_id' => $user->id,
-            'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']),
-            'content' => $validated['content'],
-            'order' => $maxOrder + 1,
-        ]);
-
-        $user->logActivity('created', "Created Wiki Page '{$page->title}'", $page);
-
+        $page = $this->wikiService->createPage($chapter, $request->validated(), auth()->user());
         return redirect()->route('wikis.showPage', $page)->with('success', "Page '{$page->title}' published.");
     }
 
@@ -221,51 +153,19 @@ class WikiController extends Controller
     /**
      * Update an existing Wiki Page.
      */
-    public function updatePage(Request $request, WikiPage $page)
+    public function updatePage(UpdateWikiRequest $request, WikiPage $page)
     {
-        $user = auth()->user();
-        $page->load('chapter.book');
-
-        if ($user && !Gate::allows('update', $page->chapter->book)) {
-            abort(403, 'Unauthorized.');
-        }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-        ]);
-
-        $page->update([
-            'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']),
-            'content' => $validated['content'],
-        ]);
-
-        $user->logActivity('updated', "Updated Wiki Page '{$page->title}'", $page);
-
+        $this->wikiService->updatePage($page, $request->validated(), auth()->user());
         return redirect()->route('wikis.showPage', $page)->with('success', "Page updated successfully.");
     }
 
     /**
      * Share private book with specific users.
      */
-    public function shareBook(Request $request, WikiBook $book)
+    public function shareBook(UpdateWikiRequest $request, WikiBook $book)
     {
-        $user = auth()->user();
-        if ($user && !Gate::allows('update', $book)) {
-            abort(403, 'Unauthorized.');
-        }
-
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-        ]);
-
-        $targetUser = User::findOrFail($validated['user_id']);
-        $book->sharedUsers()->syncWithoutDetaching([$targetUser->id]);
-
-        $user->logActivity('shared_wiki', "Shared private Wiki Book '{$book->title}' with {$targetUser->name}", $book);
-
-        return redirect()->back()->with('success', "Shared Wiki Book with {$targetUser->name}.");
+        $this->wikiService->shareBook($book, $request->validated(), auth()->user());
+        return redirect()->back()->with('success', "Shared Wiki Book successfully.");
     }
 
     /**
@@ -279,9 +179,7 @@ class WikiController extends Controller
         }
 
         $title = $book->title;
-        $book->delete();
-        $user->logActivity('deleted', "Soft-deleted Wiki Book '{$title}'", $book);
-
+        $book->delete(); // Observer handles logging
         return redirect()->route('wikis.index')->with('success', "Wiki Book '{$title}' soft-deleted.");
     }
 
@@ -298,9 +196,7 @@ class WikiController extends Controller
         }
 
         $title = $chapter->title;
-        $chapter->delete();
-        $user->logActivity('deleted', "Soft-deleted Wiki Chapter '{$title}'", $chapter);
-
+        $chapter->delete(); // Observer handles logging
         return redirect()->back()->with('success', "Chapter '{$title}' soft-deleted.");
     }
 
@@ -318,9 +214,7 @@ class WikiController extends Controller
 
         $title = $page->title;
         $bookId = $page->chapter->wiki_book_id;
-        $page->delete();
-
-        $user->logActivity('deleted', "Soft-deleted Wiki Page '{$title}'", $page);
+        $page->delete(); // Observer handles logging
 
         return redirect()->route('wikis.showBook', $bookId)->with('success', "Page '{$title}' soft-deleted.");
     }

@@ -14,6 +14,13 @@ return new class extends Migration
         Schema::rename('task_comments', 'comments');
 
         Schema::table('comments', function (Blueprint $table) {
+            if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+                try {
+                    $table->dropForeign('task_comments_task_id_foreign');
+                } catch (\Throwable $e) {
+                    // Foreign key may already be dropped
+                }
+            }
             $table->renameColumn('task_id', 'commentable_id');
         });
 

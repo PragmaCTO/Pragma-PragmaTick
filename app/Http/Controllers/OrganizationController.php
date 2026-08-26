@@ -92,7 +92,8 @@ class OrganizationController extends Controller
             abort(403, 'Unauthorized to view this organization.');
         }
 
-        $organization->load(['users', 'projects.users']);
+        $organization->load(['users', 'projects' => fn($q) => $q->with('users')->withCount('tasks')])
+            ->loadCount(['projects', 'users']);
         $allUsers = User::orderBy('name')->get();
 
         return view('organizations.show', compact('organization', 'allUsers', 'user'));

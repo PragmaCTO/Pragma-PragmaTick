@@ -358,18 +358,28 @@
         document.getElementById('editChecklistModal').style.display = 'flex';
     }
 
+    window.checklistStore = window.checklistStore || {};
+    let activeOpenChecklistId = null;
+
     function openShowChecklistModal(item) {
-        document.getElementById('show_chk_title').innerText = item.title;
-        document.getElementById('show_chk_status').innerText = item.status;
-        document.getElementById('show_chk_priority').innerText = item.priority;
-        document.getElementById('show_chk_start_date').innerText = item.start_date ? item.start_date.substring(0, 10) : 'TBD';
-        document.getElementById('show_chk_due_date').innerText = item.due_date ? item.due_date.substring(0, 10) : 'TBD';
-        document.getElementById('show_chk_description').innerText = item.description || 'No description provided.';
+        window.checklistStore = window.checklistStore || {};
+        if (!window.checklistStore[item.id]) {
+            window.checklistStore[item.id] = JSON.parse(JSON.stringify(item));
+        }
+        activeOpenChecklistId = item.id;
+        const itemData = window.checklistStore[item.id];
+
+        document.getElementById('show_chk_title').innerText = itemData.title;
+        document.getElementById('show_chk_status').innerText = itemData.status;
+        document.getElementById('show_chk_priority').innerText = itemData.priority;
+        document.getElementById('show_chk_start_date').innerText = itemData.start_date ? itemData.start_date.substring(0, 10) : 'TBD';
+        document.getElementById('show_chk_due_date').innerText = itemData.due_date ? itemData.due_date.substring(0, 10) : 'TBD';
+        document.getElementById('show_chk_description').innerText = itemData.description || 'No description provided.';
         
-        document.getElementById('checklistCommentForm').action = '/comments/checklist/' + item.id;
+        document.getElementById('checklistCommentForm').action = '/comments/checklist/' + itemData.id;
         let commentsHtml = '';
-        if (item.comments && item.comments.length > 0) {
-            item.comments.forEach(c => {
+        if (itemData.comments && itemData.comments.length > 0) {
+            itemData.comments.forEach(c => {
                 const date = new Date(c.created_at).toLocaleString();
                 const userName = c.user ? c.user.name : 'Unknown';
                 
@@ -423,7 +433,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({ status: targetStatus })
         })
@@ -459,8 +470,15 @@
             
             if (data.success) {
                 form.content.value = '';
+                if (activeOpenChecklistId && window.checklistStore[activeOpenChecklistId]) {
+                    if (!window.checklistStore[activeOpenChecklistId].comments) {
+                        window.checklistStore[activeOpenChecklistId].comments = [];
+                    }
+                    window.checklistStore[activeOpenChecklistId].comments.push(data.comment);
+                }
+
                 const date = new Date(data.comment.created_at).toLocaleString();
-                const userName = data.comment.user.name;
+                const userName = data.comment.user ? data.comment.user.name : 'Unknown';
                 
                 let actionsHtml = `
                     <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -530,6 +548,10 @@
         }).then(res => res.json()).then(data => {
             if(data.success) {
                 document.getElementById('comment-content-' + id).innerText = newText;
+                if (activeOpenChecklistId && window.checklistStore[activeOpenChecklistId] && window.checklistStore[activeOpenChecklistId].comments) {
+                    const targetC = window.checklistStore[activeOpenChecklistId].comments.find(c => c.id === id);
+                    if (targetC) targetC.content = newText;
+                }
             }
         });
     };
@@ -546,6 +568,9 @@
                 if(data.success) {
                     const wrapper = document.getElementById('comment-wrapper-' + id);
                     if(wrapper) wrapper.remove();
+                    if (activeOpenChecklistId && window.checklistStore[activeOpenChecklistId] && window.checklistStore[activeOpenChecklistId].comments) {
+                        window.checklistStore[activeOpenChecklistId].comments = window.checklistStore[activeOpenChecklistId].comments.filter(c => c.id !== id);
+                    }
                 }
             });
         }

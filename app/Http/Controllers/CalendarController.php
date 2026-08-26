@@ -4,11 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\CalendarEvent;
 use App\Models\User;
+use App\Http\Requests\StoreCalendarEventRequest;
+use App\Http\Requests\UpdateCalendarEventRequest;
+use App\Services\CalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class CalendarController extends Controller
 {
+    protected CalendarService $calendarService;
+
+    public function __construct(CalendarService $calendarService)
+    {
+        $this->calendarService = $calendarService;
+    }
     /**
      * Display full-page monthly calendar view with month/year navigation controls & aggregate overlay.
      */
@@ -50,6 +59,7 @@ class CalendarController extends Controller
 
         // Query Events
         $query = CalendarEvent::with(['organizer', 'attendees'])
+            ->withCount('attendees')
             ->where('start_time', '<=', $calendarEnd->endOfDay())
             ->where('end_time', '>=', $calendarStart->startOfDay());
 
@@ -76,9 +86,17 @@ class CalendarController extends Controller
             $eventsByDate[$evtDate][] = $evt;
         }
 
-        // Fetch Today's events specifically for the hourly timeline stream
-        $todayDateStr = now()->format('Y-m-d');
+        // Fetch events specifically for the hourly timeline stream (defaults to today or selected date)
+        $timelineDateStr = $request->input('date', now()->format('Y-m-d'));
+        try {
+            $timelineDate = \Carbon\Carbon::parse($timelineDateStr);
+        } catch (\Exception $e) {
+            $timelineDate = now();
+            $timelineDateStr = $timelineDate->format('Y-m-d');
+        }
+
         $todayEvents = CalendarEvent::with(['organizer', 'attendees'])
+            ->withCount('attendees')
             ->where(function ($q) use ($user, $selectedUserIds) {
                 if ($user->isSuperAdmin() && !empty($selectedUserIds)) {
                     $q->whereIn('organizer_id', $selectedUserIds)
@@ -88,8 +106,8 @@ class CalendarController extends Controller
                       ->orWhereHas('attendees', fn($q2) => $q2->where('users.id', $user->id));
                 }
             })
-            ->whereDate('start_time', '<=', $todayDateStr)
-            ->whereDate('end_time', '>=', $todayDateStr)
+            ->whereDate('start_time', '<=', $timelineDateStr)
+            ->whereDate('end_time', '>=', $timelineDateStr)
             ->orderBy('start_time')
             ->get();
 
@@ -101,6 +119,8 @@ class CalendarController extends Controller
             'calendarEnd',
             'eventsByDate',
             'todayEvents',
+            'timelineDateStr',
+            'timelineDate',
             'schedulableUsers',
             'selectedUserIds',
             'user'
@@ -110,123 +130,27 @@ class CalendarController extends Controller
     /**
      * Schedule a new meeting / event with overlap conflict checking.
      */
-    public function store(Request $request)
+    public function store(StoreCalendarEventRequest $request)
     {
         /** @var User $user */
         $user = auth()->user();
-        if (!$user) {
-            abort(403, 'Unauthorized.');
-        }
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time',
-            'attendees' => 'nullable|array',
-            'attendees.*' => 'exists:users,id',
-            'override_conflict' => 'nullable|boolean',
-            'recurrence_pattern' => 'nullable|in:none,daily,weekly,monthly',
-            'recurrence_end_date' => 'nullable|date|after_or_equal:start_time',
-        ]);
+        $result = $this->calendarService->createEvents($request->validated(), $user);
 
-        $startTime = Carbon::parse($validated['start_time']);
-        $endTime = Carbon::parse($validated['end_time']);
-
-        $attendeeIds = $validated['attendees'] ?? [];
-        if (!in_array($user->id, $attendeeIds)) {
-            $attendeeIds[] = $user->id;
-        }
-
-        if (!$user->isSuperAdmin()) {
-            $allowedUserIds = User::whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $user->organizations()->pluck('organizations.id')))->pluck('id')->toArray();
-            foreach ($validated['attendees'] ?? [] as $attId) {
-                if (!in_array($attId, $allowedUserIds)) {
-                    abort(403, 'Cannot schedule meetings with users outside your organization.');
-                }
-            }
-        }
-
-        $pattern = $validated['recurrence_pattern'] ?? 'none';
-        $recurrenceEndDate = !empty($validated['recurrence_end_date']) ? Carbon::parse($validated['recurrence_end_date'])->endOfDay() : null;
-
-        $occurrences = [];
-        $currentStart = $startTime->copy();
-        $currentEnd = $endTime->copy();
-
-        if ($pattern === 'none' || !$recurrenceEndDate) {
-            $occurrences[] = ['start' => $currentStart, 'end' => $currentEnd];
-        } else {
-            // Cap occurrences to prevent infinite loops / overload
-            $maxOccurrences = 100;
-            $count = 0;
-            while ($currentStart <= $recurrenceEndDate && $count < $maxOccurrences) {
-                $occurrences[] = ['start' => $currentStart->copy(), 'end' => $currentEnd->copy()];
-                if ($pattern === 'daily') {
-                    $currentStart->addDay();
-                    $currentEnd->addDay();
-                } elseif ($pattern === 'weekly') {
-                    $currentStart->addWeek();
-                    $currentEnd->addWeek();
-                } elseif ($pattern === 'monthly') {
-                    $currentStart->addMonth();
-                    $currentEnd->addMonth();
-                }
-                $count++;
-            }
-        }
-
-        // Check for conflicts across all occurrences
-        $conflictingEvents = collect();
-        foreach ($occurrences as $occ) {
-            $conflicts = CalendarEvent::where(function ($q) use ($attendeeIds) {
-                $q->whereIn('organizer_id', $attendeeIds)
-                  ->orWhereHas('attendees', fn($q2) => $q2->whereIn('users.id', $attendeeIds));
-            })
-            ->where(function ($q) use ($occ) {
-                $q->where('start_time', '<', $occ['end'])
-                  ->where('end_time', '>', $occ['start']);
-            })
-            ->with('organizer')
-            ->get();
-            $conflictingEvents = $conflictingEvents->merge($conflicts);
-        }
-        $conflictingEvents = $conflictingEvents->unique('id');
-
-        if ($conflictingEvents->count() > 0 && empty($validated['override_conflict'])) {
+        if ($result->has('conflicts')) {
+            $conflictingEvents = $result->get('conflicts');
             $conflictDetails = $conflictingEvents->map(fn($e) => "'{$e->title}' ({$e->start_time->format('M d H:i')} - {$e->end_time->format('H:i')})")->implode(', ');
             
             return redirect()->back()
                 ->withInput()
                 ->with('conflict_warning', [
                     'message' => "Schedule Conflict Detected! Target user(s) already have overlapping event(s): {$conflictDetails}.",
-                    'data' => $validated,
+                    'data' => $request->validated(),
                 ]);
         }
 
-        $isSuperAdminEvent = $user->isSuperAdmin();
-        $eventColor = $isSuperAdminEvent ? '#f43f5e' : '#008b8b';
-
-        foreach ($occurrences as $occ) {
-            $event = CalendarEvent::create([
-                'organizer_id' => $user->id,
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'start_time' => $occ['start'],
-                'end_time' => $occ['end'],
-                'is_super_admin_event' => $isSuperAdminEvent,
-                'color' => $eventColor,
-            ]);
-
-            if (!empty($validated['attendees'])) {
-                $event->attendees()->sync($validated['attendees']);
-            }
-        }
-
-        $user->logActivity('scheduled_event', "Scheduled event '{$validated['title']}' (" . count($occurrences) . " occurrences)", null);
-
-        return redirect()->route('calendar.index', ['month' => $startTime->month, 'year' => $startTime->year])
-            ->with('success', "Event '{$validated['title']}' scheduled successfully (" . count($occurrences) . " occurrences).");
+        return redirect()->route('calendar.index', ['month' => Carbon::parse($request->start_time)->month, 'year' => Carbon::parse($request->start_time)->year])
+            ->with('success', "Event '{$request->title}' scheduled successfully (" . $result->count() . " occurrences).");
     }
 
     /**
@@ -243,7 +167,7 @@ class CalendarController extends Controller
             abort(403, 'Unauthorized to view this calendar event.');
         }
 
-        $event->load(['organizer', 'attendees']);
+        $event->load(['organizer', 'attendees'])->loadCount('attendees');
 
         return view('calendar.show', compact('event', 'user'));
     }
@@ -277,42 +201,9 @@ class CalendarController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, CalendarEvent $event)
+    public function update(UpdateCalendarEventRequest $request, CalendarEvent $event)
     {
-        /** @var User $user */
-        $user = auth()->user();
-
-        if (!$user->isSuperAdmin() && $event->organizer_id !== $user->id) {
-            abort(403, 'Only the organizer or a Super Admin can edit this event.');
-        }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time',
-            'attendees' => 'nullable|array',
-            'attendees.*' => 'exists:users,id',
-        ]);
-
-        $event->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
-        ]);
-
-        if (isset($validated['attendees'])) {
-            $attendeeIds = $validated['attendees'];
-            if (!in_array($event->organizer_id, $attendeeIds)) {
-                $attendeeIds[] = $event->organizer_id;
-            }
-            $event->attendees()->sync($attendeeIds);
-        } else {
-            $event->attendees()->sync([$event->organizer_id]);
-        }
-
-        $user->logActivity('updated', "Updated calendar event '{$event->title}'", $event);
+        $this->calendarService->updateEvent($event, $request->validated());
 
         return redirect()->route('calendar.show', $event)->with('success', "Event updated successfully.");
     }
@@ -334,7 +225,6 @@ class CalendarController extends Controller
 
         $title = $event->title;
         $event->delete();
-        $user->logActivity('deleted', "Soft-deleted calendar event '{$title}'", $event);
 
         return redirect()->back()->with('success', "Calendar event '{$title}' soft-deleted.");
     }

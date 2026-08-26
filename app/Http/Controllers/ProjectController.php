@@ -2,14 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\ProjectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class ProjectController extends Controller
 {
+    protected ProjectService $projectService;
+
+    public function __construct(ProjectService $projectService)
+    {
+        $this->projectService = $projectService;
+    }
+
     /**
      * Display a listing of projects grouped/sorted by organization with scoped visibility.
      */
@@ -22,10 +31,7 @@ class ProjectController extends Controller
             $projects = Project::with(['organization', 'users'])->withCount(['tasks', 'milestones'])->get();
             $organizations = Organization::with('projects')->get();
         } else {
-            // Org Admins see all projects in their assigned orgs
             $adminOrgIds = $user->organizations()->wherePivot('role', 'org_admin')->pluck('organizations.id');
-
-            // Member assigned project IDs
             $assignedProjectIds = $user->projects()->pluck('projects.id');
 
             $projects = Project::whereIn('organization_id', $adminOrgIds)
@@ -58,66 +64,18 @@ class ProjectController extends Controller
     /**
      * Store a newly created project (Org Admin & Super Admin).
      */
-    public function store(Request $request)
+    public function store(UpdateProjectRequest $request)
     {
-        $validated = $request->validate([
-            'organization_id' => 'required|exists:organizations,id',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'abbreviation' => 'required|string|max:10|alpha_dash',
-            'start_date' => 'nullable|date',
-            'due_date' => 'nullable|date|after_or_equal:start_date',
-        ]);
-
-        $organization = Organization::findOrFail($validated['organization_id']);
-
-        $user = auth()->user();
-        if (!$user || !Gate::allows('create', [Project::class, $organization])) {
-            abort(403, 'Unauthorized to create projects in this organization.');
-        }
-
-        $project = Project::create([
-            'organization_id' => $validated['organization_id'],
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'abbreviation' => strtoupper($validated['abbreviation']),
-            'start_date' => $validated['start_date'] ?? null,
-            'due_date' => $validated['due_date'] ?? null,
-        ]);
-
-        $user->logActivity('created', "Created project {$project->name} ({$project->abbreviation})", $project);
-
+        $project = $this->projectService->createProject($request->validated(), auth()->user());
         return redirect()->route('projects.index')->with('success', 'Project created successfully.');
     }
 
     /**
      * Update specified project details.
      */
-    public function update(Request $request, Project $project)
+    public function update(UpdateProjectRequest $request, Project $project)
     {
-        $user = auth()->user();
-        if (!$user || !Gate::allows('update', $project)) {
-            abort(403, 'Unauthorized to update this project.');
-        }
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'abbreviation' => 'required|string|max:10',
-            'start_date' => 'nullable|date',
-            'due_date' => 'nullable|date|after_or_equal:start_date',
-        ]);
-
-        $project->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'abbreviation' => strtoupper($validated['abbreviation']),
-            'start_date' => $validated['start_date'] ?? null,
-            'due_date' => $validated['due_date'] ?? null,
-        ]);
-
-        $user->logActivity('updated', "Updated project details for {$project->name}", $project);
-
+        $this->projectService->updateProject($project, $request->validated(), auth()->user());
         return redirect()->back()->with('success', "Project '{$project->name}' updated successfully.");
     }
 
@@ -132,6 +90,7 @@ class ProjectController extends Controller
         }
 
         $project->load(['organization', 'users', 'milestones', 'tasks.assignee', 'comments.user']);
+        $project->loadCount(['tasks', 'milestones']);
         $allUsers = User::orderBy('name')->get();
 
         return view('projects.show', compact('project', 'allUsers', 'user'));
@@ -141,36 +100,10 @@ class ProjectController extends Controller
      * Add existing user to project with role & position.
      * Project Admins, Org Admins, and Super Admins can add project members.
      */
-    public function addMember(Request $request, Project $project)
+    public function addMember(UpdateProjectRequest $request, Project $project)
     {
-        $user = auth()->user();
-        if (!$user || !Gate::allows('manageMembers', $project)) {
-            abort(403, 'Unauthorized to manage members in this project.');
-        }
-
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:project_admin,member',
-            'position' => 'nullable|string|max:255',
-        ]);
-
-        $targetUser = User::findOrFail($validated['user_id']);
-
-        // Sync/Attach with pivot role and position
-        $project->users()->syncWithoutDetaching([
-            $targetUser->id => [
-                'role' => $validated['role'],
-                'position' => $validated['position'] ?? 'Team Member',
-            ]
-        ]);
-
-        $user->logActivity('assigned_role', "Assigned {$targetUser->name} as {$validated['role']} in {$project->name}", $project, [
-            'target_user_id' => $targetUser->id,
-            'role' => $validated['role'],
-            'position' => $validated['position'] ?? 'Team Member',
-        ]);
-
-        return redirect()->back()->with('success', "{$targetUser->name} assigned to project successfully.");
+        $this->projectService->addMember($project, $request->validated(), auth()->user());
+        return redirect()->back()->with('success', "User assigned to project successfully.");
     }
 
     /**
@@ -178,14 +111,7 @@ class ProjectController extends Controller
      */
     public function removeMember(Project $project, User $targetUser)
     {
-        $user = auth()->user();
-        if (!$user || !Gate::allows('manageMembers', $project)) {
-            abort(403, 'Unauthorized to remove members from this project.');
-        }
-
-        $project->users()->detach($targetUser->id);
-        $user->logActivity('removed_member', "Removed {$targetUser->name} from project {$project->name}", $project);
-
+        $this->projectService->removeMember($project, $targetUser, auth()->user());
         return redirect()->back()->with('success', "Member removed from project.");
     }
 
@@ -200,9 +126,7 @@ class ProjectController extends Controller
         }
 
         $projectName = $project->name;
-        $project->delete();
-        $user->logActivity('deleted', "Soft-deleted project {$projectName}", $project);
-
+        $project->delete(); // Observer handles the logActivity
         return redirect()->route('projects.index')->with('success', "Project {$projectName} soft-deleted.");
     }
 }

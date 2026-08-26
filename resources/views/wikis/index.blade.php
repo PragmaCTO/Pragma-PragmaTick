@@ -48,7 +48,7 @@
                 @else
                     Owner: <strong>Unassigned / Author ({{ $book->author->name }})</strong>
                 @endif
-                <div style="margin-top: 0.2rem;">Chapters: <strong>{{ $book->chapters->count() }}</strong></div>
+                <div style="margin-top: 0.2rem;">Chapters: <strong>{{ $book->chapters_count ?? $book->chapters->count() }}</strong></div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">

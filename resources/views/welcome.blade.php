@@ -38,20 +38,7 @@
                     <input type="hidden" id="timezoneSelect" value="UTC">
 
                     <div id="tzComboboxPanel" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 0.35rem; width: 280px; max-height: 230px; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--primary); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 999;">
-                        @if(isset($formattedTimezones))
-                            @foreach($formattedTimezones as $tzItem)
-                                <div class="tz-option-item" data-value="{{ $tzItem['id'] }}" data-label="{{ $tzItem['label'] }}" data-search="{{ $tzItem['search'] }}" onclick="selectComboboxTz('{{ $tzItem['id'] }}', '{{ addslashes($tzItem['label']) }}')" style="padding: 0.45rem 0.75rem; font-size: 0.76rem; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; transition: all 0.15s ease;">
-                                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main);">{{ $tzItem['id'] }}</span>
-                                    <span class="tag tag-cyan" style="font-size: 0.62rem; flex-shrink: 0; padding: 0.1rem 0.35rem;">{{ $tzItem['offset'] }}</span>
-                                </div>
-                            @endforeach
-                        @else
-                            @foreach($allTimezones as $tzOption)
-                                <div class="tz-option-item" data-value="{{ $tzOption }}" data-label="{{ $tzOption }}" data-search="{{ strtolower($tzOption) }}" onclick="selectComboboxTz('{{ $tzOption }}', '{{ $tzOption }}')" style="padding: 0.45rem 0.75rem; font-size: 0.76rem; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--border-color);">
-                                    <span style="color: var(--text-main);">{{ $tzOption }}</span>
-                                </div>
-                            @endforeach
-                        @endif
+                        <!-- Options populated via JS on demand -->
                     </div>
                 </div>
             </div>
@@ -68,69 +55,41 @@
 <!-- Scoped Metric Buckets Grid -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
     <!-- Metric 1: Tasks -->
-    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; box-shadow: var(--card-shadow);">
-        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
-            Project Tasks
-        </div>
-        <div style="font-size: 1.85rem; font-weight: 800; color: var(--primary);">
-            {{ $pendingTasksCount }} <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted);">/ {{ $totalTasksCount }}</span>
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">
-            Pending vs Total Active
-        </div>
-    </div>
+    <x-ui.metric-bucket 
+        title="Project Tasks" 
+        value="{{ $pendingTasksCount }}" 
+        subtitleValue="{{ $totalTasksCount }}" 
+        description="Pending vs Total Active" 
+        color="primary" />
 
     <!-- Metric 2: Organizations -->
-    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; box-shadow: var(--card-shadow);">
-        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
-            Organizations
-        </div>
-        <div style="font-size: 1.85rem; font-weight: 800; color: var(--accent-green);">
-            {{ $orgsCount }}
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">
-            Enterprise Organizations
-        </div>
-    </div>
+    <x-ui.metric-bucket 
+        title="Organizations" 
+        value="{{ $orgsCount }}" 
+        description="Enterprise Organizations" 
+        color="accent-green" />
 
     <!-- Metric 3: Projects -->
-    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; box-shadow: var(--card-shadow);">
-        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
-            Active Projects
-        </div>
-        <div style="font-size: 1.85rem; font-weight: 800; color: var(--primary);">
-            {{ $projectsCount }}
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">
-            Active Projects
-        </div>
-    </div>
+    <x-ui.metric-bucket 
+        title="Active Projects" 
+        value="{{ $projectsCount }}" 
+        description="Active Projects" 
+        color="primary" />
 
     <!-- Metric 4: Milestones -->
-    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; box-shadow: var(--card-shadow);">
-        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
-            Upcoming Milestones
-        </div>
-        <div style="font-size: 1.85rem; font-weight: 800; color: var(--accent-amber);">
-            {{ $upcomingMilestonesCount }}
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">
-            Scheduled Releases
-        </div>
-    </div>
+    <x-ui.metric-bucket 
+        title="Upcoming Milestones" 
+        value="{{ $upcomingMilestonesCount }}" 
+        description="Scheduled Releases" 
+        color="accent-amber" />
 
     <!-- Metric 5: Personal Checklist -->
-    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; box-shadow: var(--card-shadow);">
-        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
-            Personal Checklist
-        </div>
-        <div style="font-size: 1.85rem; font-weight: 800; color: var(--primary);">
-            {{ $pendingChecklistCount }} <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted);">/ {{ $totalChecklistCount }}</span>
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem;">
-            Pending vs Total Items
-        </div>
-    </div>
+    <x-ui.metric-bucket 
+        title="Personal Checklist" 
+        value="{{ $pendingChecklistCount }}" 
+        subtitleValue="{{ $totalChecklistCount }}" 
+        description="Pending vs Total Items" 
+        color="primary" />
 </div>
 
 <!-- 'My Day' Agenda Aggregation Section -->
@@ -238,26 +197,37 @@
         }
     }
 
+    const formattedTzs = @json($formattedTimezones ?? []);
+
+    function renderTzOptions(query = '') {
+        const panel = document.getElementById('tzComboboxPanel');
+        if (!panel) return;
+        const q = (query || '').toLowerCase().trim();
+        const filtered = formattedTzs.filter(t => !q || (t.search && t.search.includes(q))).slice(0, 35);
+        let html = '';
+        filtered.forEach(tz => {
+            const safeLabel = (tz.label || tz.id).replace(/'/g, "\\'");
+            html += `<div class="tz-option-item" onclick="selectComboboxTz('${tz.id}', '${safeLabel}')" style="padding: 0.45rem 0.75rem; font-size: 0.76rem; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; transition: background 0.15s ease;">
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main);">${tz.id}</span>
+                <span class="tag tag-cyan" style="font-size: 0.62rem; flex-shrink: 0; padding: 0.1rem 0.35rem;">${tz.offset}</span>
+            </div>`;
+        });
+        panel.innerHTML = html || '<div style="padding: 0.6rem 0.75rem; color: var(--text-muted); font-size: 0.75rem;">No matching timezone</div>';
+    }
+
     function showTzCombobox() {
         const panel = document.getElementById('tzComboboxPanel');
-        if (panel) panel.style.display = 'block';
+        if (panel) {
+            panel.style.display = 'block';
+            const input = document.getElementById('tzSearchInput');
+            renderTzOptions(input ? input.value : '');
+        }
     }
 
     function filterTzCombobox() {
         const input = document.getElementById('tzSearchInput');
-        const query = input ? input.value.toLowerCase() : '';
-        const panel = document.getElementById('tzComboboxPanel');
-        if (panel) panel.style.display = 'block';
-        
-        const items = document.querySelectorAll('.tz-option-item');
-        items.forEach(item => {
-            const searchData = (item.getAttribute('data-search') || item.getAttribute('data-label') || '').toLowerCase();
-            if (searchData.includes(query)) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
+        showTzCombobox();
+        renderTzOptions(input ? input.value : '');
     }
 
     function selectComboboxTz(tzId, tzLabel) {

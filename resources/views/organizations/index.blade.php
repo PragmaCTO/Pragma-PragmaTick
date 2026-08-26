@@ -61,11 +61,11 @@
                         @endif
                     </td>
                     <td>
-                        <strong style="font-weight: 700; color: var(--text-main); font-size: 0.85rem;">{{ $org->projects->count() }} Projects</strong>
+                        <strong style="font-weight: 700; color: var(--text-main); font-size: 0.85rem;">{{ $org->projects_count }} Projects</strong>
                     </td>
                     <td>
                         <span style="font-size: 0.84rem; font-weight: 600; color: var(--text-main);">
-                            {{ $org->users->count() }} Members
+                            {{ $org->users_count }} Members
                         </span>
                     </td>
                     <td style="text-align: right;">

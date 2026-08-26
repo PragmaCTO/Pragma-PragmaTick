@@ -1,5 +1,21 @@
 <?php
 
+if (!function_exists('mb_strimwidth')) {
+    function mb_strimwidth($string, $start, $width, $trim_marker = '', $encoding = null) {
+        $string = substr($string, $start);
+        if (strlen($string) <= $width) {
+            return $string;
+        }
+        return substr($string, 0, $width - strlen($trim_marker)) . $trim_marker;
+    }
+}
+
+if (!function_exists('mb_strwidth')) {
+    function mb_strwidth($string, $encoding = null) {
+        return strlen($string);
+    }
+}
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

@@ -12,6 +12,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- jQuery & Select2 CDNs -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
         :root {
             /* Ultra-Modern Light Theme Palette */
@@ -595,8 +601,9 @@
 
     <!-- Fixed Top Navbar -->
     <header class="topbar">
-        <!-- Far Left: System Name -->
+        <!-- Far Left: System Name with Logo Icon -->
         <a href="{{ route('dashboard') }}" class="topbar-brand">
+            <img src="{{ asset('icon.png') }}" alt="PragmaTick Logo" style="height: 28px; width: auto; object-fit: contain; vertical-align: middle;">
             <span><span style="color: var(--primary);">Pragma</span>Tick</span>
         </a>
 

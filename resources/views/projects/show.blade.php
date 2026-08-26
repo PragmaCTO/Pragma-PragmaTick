@@ -133,7 +133,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem;">
                 <h3 style="font-size: 1.15rem; font-weight: 700;">Project Tasks</h3>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $project->tasks->count() }} Tasks</strong>
+                    <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $project->tasks_count ?? $project->tasks->count() }} Tasks</strong>
                     <a href="{{ route('projects.kanban', $project) }}" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
                         View Kanban Board &rarr;
                     </a>
@@ -203,7 +203,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem;">
                 <h3 style="font-size: 1.15rem; font-weight: 700;">Project Milestones</h3>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $project->milestones->count() }} Milestones</strong>
+                    <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $project->milestones_count ?? $project->milestones->count() }} Milestones</strong>
                     @can('manage', [\App\Models\Milestone::class, $project])
                         <button class="btn btn-primary" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;" onclick="document.getElementById('createMilestoneModal').style.display='flex'">
                             + Create Milestone
@@ -246,7 +246,7 @@
         <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 style="font-size: 1.1rem; font-weight: 700;">Assigned Team Roster</h3>
-                <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $project->users->count() }} Members</strong>
+                <strong style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $project->users_count ?? $project->users->count() }} Members</strong>
             </div>
 
             <!-- Add Existing User to Project Form -->

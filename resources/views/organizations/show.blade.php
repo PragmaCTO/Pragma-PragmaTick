@@ -85,7 +85,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 2.5px solid {{ $organization->color_code }}; padding-bottom: 0.6rem;">
                 <h3 style="font-size: 1.15rem; font-weight: 700;">Assigned Projects</h3>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $organization->projects->count() }} Projects</span>
+                    <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $organization->projects_count ?? $organization->projects->count() }} Projects</span>
                     @if(auth()->user()->isSuperAdmin() || auth()->user()->isOrgAdmin($organization->id))
                         <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;" onclick="document.getElementById('createProjectModal').style.display='flex'">
                             + Create Project
@@ -124,7 +124,7 @@
                                 </td>
                                 <td>
                                     <strong style="font-size: 0.84rem; color: var(--text-main);">
-                                        {{ $p->tasks->count() }} Tasks
+                                        {{ $p->tasks_count }} Tasks
                                     </strong>
                                 </td>
                                 <td style="text-align: right;">
@@ -156,7 +156,7 @@
         <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 style="font-size: 1.1rem; font-weight: 700;">Organization Members</h3>
-                <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $organization->users->count() }} Members</span>
+                <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">{{ $organization->users_count ?? $organization->users->count() }} Members</span>
             </div>
 
             <!-- Add Existing User Form -->

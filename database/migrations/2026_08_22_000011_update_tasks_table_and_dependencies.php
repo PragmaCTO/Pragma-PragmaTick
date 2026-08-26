@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
+            $table->string('code')->nullable()->after('assigned_to');
             $table->string('type')->default('feature')->after('title'); // bug, feature, documentation, operation
             $table->date('start_date')->nullable()->after('status');
             $table->date('due_date')->nullable()->after('start_date');

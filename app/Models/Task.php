@@ -37,6 +37,18 @@ class Task extends Model
         ];
     }
 
+    /**
+     * Get formatted task code (e.g. PRAG-1).
+     */
+    public function getCodeAttribute(): string
+    {
+        if (!empty($this->attributes['code'])) {
+            return $this->attributes['code'];
+        }
+        $prefix = ($this->project && !empty($this->project->abbreviation)) ? $this->project->abbreviation : 'TASK';
+        return "{$prefix}-{$this->id}";
+    }
+
 
 
     /**
