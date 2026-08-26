@@ -226,6 +226,6 @@ class CalendarController extends Controller
         $title = $event->title;
         $event->delete();
 
-        return redirect()->back()->with('success', "Calendar event '{$title}' soft-deleted.");
+        return redirect()->route('calendar.index')->with('success', "Calendar event '{$title}' soft-deleted.");
     }
 }

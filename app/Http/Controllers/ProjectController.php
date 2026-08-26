@@ -89,7 +89,7 @@ class ProjectController extends Controller
             abort(403, 'Unauthorized to view this project.');
         }
 
-        $project->load(['organization', 'users', 'milestones', 'tasks.assignee', 'comments.user']);
+        $project->load(['organization', 'users', 'milestones', 'tasks.assignee', 'tasks.parent', 'comments.user']);
         $project->loadCount(['tasks', 'milestones']);
         $allUsers = User::orderBy('name')->get();
 

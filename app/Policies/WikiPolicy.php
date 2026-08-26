@@ -31,7 +31,7 @@ class WikiPolicy
         // Organization owned book
         if ($book->owner_type === Organization::class) {
             $orgId = $book->owner_id;
-            return $user->roleInOrganization($orgId) !== null;
+            return $user->isOrgAdmin($orgId);
         }
 
         // Project owned book

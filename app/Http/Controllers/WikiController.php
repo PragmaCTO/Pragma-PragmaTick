@@ -36,18 +36,23 @@ class WikiController extends Controller
             $organizations = Organization::all();
             $projects = Project::with('organization')->get();
         } else {
-            $userOrgIds = $user->organizations()->pluck('organizations.id');
+            $adminOrgIds = $user->organizations()->wherePivot('role', 'org_admin')->pluck('organizations.id');
             $userProjIds = $user->projects()->pluck('projects.id');
+            $orgProjectIds = Project::whereIn('organization_id', $adminOrgIds)->pluck('id');
+            
+            $allAuthorizedProjIds = $userProjIds->merge($orgProjectIds)->unique();
 
-            $books = WikiBook::where(function ($q) use ($user, $userOrgIds, $userProjIds) {
-                $q->where(fn($q1) => $q1->where('owner_type', Organization::class)->whereIn('owner_id', $userOrgIds))
-                  ->orWhere(fn($q2) => $q2->where('owner_type', Project::class)->whereIn('owner_id', $userProjIds))
+            $books = WikiBook::where(function ($q) use ($user, $adminOrgIds, $allAuthorizedProjIds) {
+                $q->where(fn($q1) => $q1->where('owner_type', Organization::class)->whereIn('owner_id', $adminOrgIds))
+                  ->orWhere(fn($q2) => $q2->where('owner_type', Project::class)->whereIn('owner_id', $allAuthorizedProjIds))
                   ->orWhere('author_id', $user->id)
                   ->orWhereHas('sharedUsers', fn($q3) => $q3->where('users.id', $user->id));
             })->with(['owner', 'author', 'chapters.pages'])->withCount('chapters')->get();
 
-            $organizations = Organization::whereIn('id', $userOrgIds)->get();
-            $projects = Project::with('organization')->whereIn('id', $userProjIds)->get();
+            $projects = Project::with('organization')->whereIn('id', $allAuthorizedProjIds)->get();
+            $organizations = Organization::whereIn('id', $adminOrgIds)
+                ->orWhereIn('id', $projects->pluck('organization_id'))
+                ->get();
         }
 
         $allUsers = User::orderBy('name')->get();

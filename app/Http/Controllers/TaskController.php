@@ -133,7 +133,7 @@ class TaskController extends Controller
             'milestone_id' => 'nullable|exists:milestones,id',
             'parent_id' => 'nullable|exists:tasks,id',
             'start_date' => 'nullable|date',
-            'due_date' => 'nullable|date',
+            'due_date' => 'nullable|date|after_or_equal:start_date',
             'assignees' => 'nullable|array',
             'assignees.*' => 'exists:users,id',
         ]);
