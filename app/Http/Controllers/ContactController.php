@@ -29,7 +29,7 @@ class ContactController extends Controller
     public function index()
     {
         $user = $this->checkSuperAdmin();
-        $contacts = Contact::latest()->get();
+        $contacts = Contact::latest()->paginate(25);
 
         return view('contacts.index', compact('contacts', 'user'));
     }

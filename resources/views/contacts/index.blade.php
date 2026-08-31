@@ -65,6 +65,12 @@
             </tbody>
         </table>
     </div>
+
+    @if($contacts->hasPages())
+        <div style="margin-top: 1.25rem;">
+            {{ $contacts->links() }}
+        </div>
+    @endif
 </div>
 
 <!-- Create Contact Modal -->
