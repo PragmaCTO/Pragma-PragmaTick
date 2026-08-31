@@ -49,28 +49,28 @@ class RecoveryController extends Controller
 
         // Aggregate Soft-Deleted Records Browser
         $deletedRecords = collect();
-        foreach (Organization::onlyTrashed()->get() as $item) {
+        foreach (Organization::onlyTrashed()->select('id', 'name', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'organization', 'id' => $item->id, 'name' => $item->name, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (Project::onlyTrashed()->get() as $item) {
+        foreach (Project::onlyTrashed()->select('id', 'name', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'project', 'id' => $item->id, 'name' => $item->name, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (Milestone::onlyTrashed()->get() as $item) {
+        foreach (Milestone::onlyTrashed()->select('id', 'title', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'milestone', 'id' => $item->id, 'name' => $item->title, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (Task::onlyTrashed()->get() as $item) {
+        foreach (Task::onlyTrashed()->select('id', 'title', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'task', 'id' => $item->id, 'name' => $item->title, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (WikiBook::onlyTrashed()->get() as $item) {
+        foreach (WikiBook::onlyTrashed()->select('id', 'title', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'wikibook', 'id' => $item->id, 'name' => $item->title, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (User::onlyTrashed()->get() as $item) {
+        foreach (User::onlyTrashed()->select('id', 'name', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'user', 'id' => $item->id, 'name' => $item->name, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (ChecklistItem::onlyTrashed()->get() as $item) {
+        foreach (ChecklistItem::onlyTrashed()->select('id', 'title', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'checklist', 'id' => $item->id, 'name' => $item->title, 'deleted_at' => $item->deleted_at]);
         }
-        foreach (Comment::onlyTrashed()->get() as $item) {
+        foreach (Comment::onlyTrashed()->select('id', 'content', 'deleted_at')->cursor() as $item) {
             $deletedRecords->push(['type' => 'comment', 'id' => $item->id, 'name' => Str::limit($item->content, 20), 'deleted_at' => $item->deleted_at]);
         }
 
