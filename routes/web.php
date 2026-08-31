@@ -61,7 +61,7 @@ Route::get('/clear-cache', function () {
 // Authentication Routes (Guest Only)
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
 // Authenticated Application Routes
