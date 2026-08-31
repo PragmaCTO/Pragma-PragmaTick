@@ -42,11 +42,12 @@ class CalendarController extends Controller
 
         // Fetch Users for scheduling target
         if ($user->isSuperAdmin()) {
-            $schedulableUsers = User::orderBy('name')->get();
+            $schedulableUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
         } else {
             // Users in user's organizations
             $orgIds = $user->organizations()->pluck('organizations.id');
-            $schedulableUsers = User::whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $orgIds))
+            $schedulableUsers = User::select('id', 'name', 'email')
+                ->whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $orgIds))
                 ->orderBy('name')
                 ->get();
         }
@@ -185,10 +186,11 @@ class CalendarController extends Controller
         }
 
         if ($user->isSuperAdmin()) {
-            $schedulableUsers = User::orderBy('name')->get();
+            $schedulableUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
         } else {
             $orgIds = $user->organizations()->pluck('organizations.id');
-            $schedulableUsers = User::whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $orgIds))
+            $schedulableUsers = User::select('id', 'name', 'email')
+                ->whereHas('organizations', fn($q) => $q->whereIn('organizations.id', $orgIds))
                 ->orderBy('name')
                 ->get();
         }

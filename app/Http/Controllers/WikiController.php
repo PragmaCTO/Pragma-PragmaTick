@@ -55,7 +55,7 @@ class WikiController extends Controller
                 ->get();
         }
 
-        $allUsers = User::orderBy('name')->get();
+        $allUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
 
         return view('wikis.index', compact('books', 'organizations', 'projects', 'user', 'allUsers'));
     }
@@ -80,7 +80,7 @@ class WikiController extends Controller
         }
 
         $book->load(['owner', 'author', 'chapters.pages.author', 'sharedUsers']);
-        $allUsers = User::orderBy('name')->get();
+        $allUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
 
         return view('wikis.show_book', compact('book', 'allUsers', 'user'));
     }
