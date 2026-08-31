@@ -590,6 +590,16 @@
     const currentUserId = {{ auth()->id() }};
     const isSuperAdmin = {{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }};
 
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function switchTab(tab) {
         window.location.href = '?tab=' + tab;
     }
@@ -653,13 +663,13 @@
 
                 commentsHtml += `<div id="comment-wrapper-${c.id}" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem;">
                     <div style="display:flex; justify-content:space-between; margin-bottom: 0.4rem;">
-                        <strong style="color: var(--primary);">${userName}</strong>
+                        <strong style="color: var(--primary);">${escapeHtml(userName)}</strong>
                         <div style="display:flex; gap:0.75rem; align-items:center;">
                             <span style="color: var(--text-muted); font-size: 0.75rem;">${date}</span>
                             ${actionsHtml}
                         </div>
                     </div>
-                    <div id="comment-content-${c.id}" style="color: var(--text-main); white-space: pre-wrap;">${c.content}</div>
+                    <div id="comment-content-${c.id}" style="color: var(--text-main); white-space: pre-wrap;">${escapeHtml(c.content)}</div>
                 </div>`;
             });
         } else {
@@ -764,13 +774,13 @@
                 `;
                 const commentHtml = `<div id="comment-wrapper-${data.comment.id}" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem;">
                     <div style="display:flex; justify-content:space-between; margin-bottom: 0.4rem;">
-                        <strong style="color: var(--primary);">${userName}</strong>
+                        <strong style="color: var(--primary);">${escapeHtml(userName)}</strong>
                         <div style="display:flex; gap:0.75rem; align-items:center;">
                             <span style="color: var(--text-muted); font-size: 0.75rem;">${date}</span>
                             ${actionsHtml}
                         </div>
                     </div>
-                    <div id="comment-content-${data.comment.id}" style="color: var(--text-main); white-space: pre-wrap;">${data.comment.content}</div>
+                    <div id="comment-content-${data.comment.id}" style="color: var(--text-main); white-space: pre-wrap;">${escapeHtml(data.comment.content)}</div>
                 </div>`;
                 
                 const list = document.getElementById('taskCommentsList');
@@ -793,17 +803,19 @@
     window.editComment = function(id) {
         const contentDiv = document.getElementById('comment-content-' + id);
         const currentText = contentDiv.innerText;
+        contentDiv.dataset.original = currentText;
         contentDiv.innerHTML = `
-            <textarea id="edit-comment-input-${id}" rows="2" style="width:100%; padding:0.4rem; border-radius:6px; border:1px solid var(--primary); background:var(--bg-surface); color:var(--text-main); margin-bottom:0.5rem;">${currentText}</textarea>
+            <textarea id="edit-comment-input-${id}" rows="2" style="width:100%; padding:0.4rem; border-radius:6px; border:1px solid var(--primary); background:var(--bg-surface); color:var(--text-main); margin-bottom:0.5rem;">${escapeHtml(currentText)}</textarea>
             <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="cancelEditComment(${id}, \`${currentText.replace(/`/g, '\\`')}\`)">Cancel</button>
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="cancelEditComment(${id})">Cancel</button>
                 <button type="button" class="btn btn-primary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="saveEditComment(${id})">Save</button>
             </div>
         `;
     };
 
-    window.cancelEditComment = function(id, originalText) {
-        document.getElementById('comment-content-' + id).innerText = originalText;
+    window.cancelEditComment = function(id) {
+        const contentDiv = document.getElementById('comment-content-' + id);
+        contentDiv.innerText = contentDiv.dataset.original || '';
     };
 
     window.saveEditComment = function(id) {
