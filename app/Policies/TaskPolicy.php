@@ -62,6 +62,9 @@ class TaskPolicy
 
         // Regular project member: check if user is assigned to this task
         if ($user->roleInProject($task->project) !== null) {
+            if ($task->relationLoaded('assignees')) {
+                return $task->assignees->contains('id', $user->id) || $task->assigned_to === $user->id;
+            }
             return $task->assignees()->where('users.id', $user->id)->exists() || $task->assigned_to === $user->id;
         }
 

@@ -126,7 +126,11 @@ class User extends Authenticatable
     public function roleInOrganization(Organization|int $organization): ?string
     {
         $orgId = $organization instanceof Organization ? $organization->id : $organization;
-        $pivot = $this->organizations()->where('organization_id', $orgId)->first()?->pivot;
+        if ($this->relationLoaded('organizations')) {
+            $org = $this->organizations->firstWhere('id', $orgId);
+            return $org?->pivot?->role;
+        }
+        $pivot = $this->organizations()->where('organizations.id', $orgId)->first()?->pivot;
 
         return $pivot ? $pivot->role : null;
     }
@@ -149,7 +153,11 @@ class User extends Authenticatable
     public function roleInProject(Project|int $project): ?string
     {
         $projectId = $project instanceof Project ? $project->id : $project;
-        $pivot = $this->projects()->where('project_id', $projectId)->first()?->pivot;
+        if ($this->relationLoaded('projects')) {
+            $proj = $this->projects->firstWhere('id', $projectId);
+            return $proj?->pivot?->role;
+        }
+        $pivot = $this->projects()->where('projects.id', $projectId)->first()?->pivot;
 
         return $pivot ? $pivot->role : null;
     }
