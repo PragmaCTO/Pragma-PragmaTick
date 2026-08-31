@@ -217,9 +217,9 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; margin-top: 0.2rem; font-size: 0.75rem; color: var(--text-muted);">
                                 <span>Assignees: {{ $task->assignees_count ?? $task->assignees->count() }}</span>
                                 <div style="display: flex; gap: 0.35rem;">
-                                    <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openShowTaskModal({{ json_encode($task->load(['assignees', 'comments.user'])) }})">Details</button>
+                                    <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openShowTaskModal({{ json_encode($task) }})">Details</button>
                                     @can('update', $task)
-                                        <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openEditTaskModal({{ json_encode($task->load(['assignees', 'comments.user'])) }})">Edit</button>
+                                        <button class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" onclick="openEditTaskModal({{ json_encode($task) }})">Edit</button>
                                     @endcan
                                     @can('delete', $task)
                                         <form action="{{ route('tasks.destroy', $task) }}" method="POST" onsubmit="return promptDelete('Task {{ addslashes($task->code) }}', this);" style="margin:0;">
@@ -287,9 +287,9 @@
                                 <span style="font-size: 0.82rem; color: var(--text-main);">{{ $t->due_date ? $t->due_date->format('M d, Y') : 'TBD' }}</span>
                             </td>
                             <td style="padding: 0.75rem; text-align: right;">
-                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openShowTaskModal({{ json_encode($t->load(['assignees', 'comments.user'])) }})">Details</button>
+                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openShowTaskModal({{ json_encode($t) }})">Details</button>
                                 @can('update', $t)
-                                    <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openEditTaskModal({{ json_encode($t->load(['assignees', 'comments.user'])) }})">Edit</button>
+                                    <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="openEditTaskModal({{ json_encode($t) }})">Edit</button>
                                 @endcan
                                 @can('delete', $t)
                                     <form action="{{ route('tasks.destroy', $t) }}" method="POST" onsubmit="return promptDelete('Task {{ addslashes($t->code) }}', this);" style="display:inline;">
