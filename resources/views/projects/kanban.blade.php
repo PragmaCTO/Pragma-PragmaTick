@@ -688,10 +688,15 @@
         ev.dataTransfer.setData("text/plain", taskId);
     }
 
+    let isMovingTask = false;
+
     function dropTask(ev, targetStatus) {
         ev.preventDefault();
         const taskId = ev.dataTransfer.getData("text/plain");
-        if (!taskId) return;
+        if (!taskId || isMovingTask) return;
+
+        isMovingTask = true;
+        document.body.style.cursor = 'wait';
 
         fetch(`/tasks/${taskId}/status`, {
             method: 'POST',
@@ -706,7 +711,16 @@
         .then(data => {
             if (data.success) {
                 window.location.reload();
+            } else {
+                alert(data.error || 'Failed to update task status.');
+                isMovingTask = false;
+                document.body.style.cursor = 'default';
             }
+        })
+        .catch(() => {
+            isMovingTask = false;
+            document.body.style.cursor = 'default';
+            alert('Network error while moving task.');
         });
     }
 </script>
