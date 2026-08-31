@@ -297,7 +297,15 @@
         }
     }
 
-    markdownEditor.addEventListener('input', updateLivePreview);
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    markdownEditor.addEventListener('input', debounce(updateLivePreview, 300));
     document.addEventListener('DOMContentLoaded', updateLivePreview);
 </script>
 @endsection
