@@ -3,8 +3,9 @@
 @section('title', ($page->exists ? 'Edit ' . $page->title : 'New Wiki Page') . ' - PragmaTick')
 
 @section('content')
-<!-- Mermaid.js & Marked.js CDN -->
+<!-- Mermaid.js, Marked.js & DOMPurify CDN -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
 <div style="margin-bottom: 1.5rem;">
@@ -201,9 +202,10 @@
     function syncMarkdownToWysiwyg() {
         const markdownVal = markdownEditor.value;
         if (window.marked) {
-            wysiwygEditor.innerHTML = marked.parse(markdownVal);
+            const rawHtml = marked.parse(markdownVal);
+            wysiwygEditor.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml;
         } else {
-            wysiwygEditor.innerHTML = markdownVal.replace(/\n/g, '<br>');
+            wysiwygEditor.textContent = markdownVal;
         }
     }
 
@@ -253,9 +255,10 @@
     function updateLivePreview() {
         const val = markdownEditor.value;
         if (window.marked) {
-            livePreviewPanel.innerHTML = marked.parse(val);
+            const rawHtml = marked.parse(val);
+            livePreviewPanel.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml;
         } else {
-            livePreviewPanel.innerHTML = val.replace(/\n/g, '<br>');
+            livePreviewPanel.textContent = val;
         }
 
         const codeBlocks = livePreviewPanel.querySelectorAll('pre code.language-mermaid, pre code.lang-mermaid');

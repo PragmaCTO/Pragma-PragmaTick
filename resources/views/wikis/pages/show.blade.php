@@ -3,8 +3,9 @@
 @section('title', $page->title . ' - Wiki Documentation Workspace')
 
 @section('content')
-<!-- Mermaid.js & Marked.js CDN -->
+<!-- Mermaid.js, Marked.js & DOMPurify CDN -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
 <!-- Combined Top Header Card with Document Info & Timestamps -->
@@ -215,9 +216,10 @@
         const targetEl = document.getElementById('renderedContentArea');
 
         if (window.marked) {
-            targetEl.innerHTML = marked.parse(rawContent);
+            const rawHtml = marked.parse(rawContent);
+            targetEl.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml;
         } else {
-            targetEl.innerHTML = rawContent.replace(/\n/g, '<br>');
+            targetEl.textContent = rawContent;
         }
 
         const codeBlocks = targetEl.querySelectorAll('pre code.language-mermaid, pre code.lang-mermaid');
