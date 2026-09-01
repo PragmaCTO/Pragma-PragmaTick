@@ -179,7 +179,7 @@
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span class="tag tag-cyan">{{ $colTasks->count() }}</span>
+                        <span class="tag tag-cyan kanban-col-count">{{ $colTasks->count() }}</span>
                         
                         @if(!$status->is_mandatory && auth()->user()->can('update', $project))
                             <form action="{{ route('statuses.destroy', $status) }}" method="POST" onsubmit="return confirm('Delete column {{ addslashes($status->name) }}?');" style="margin:0;">
@@ -223,7 +223,7 @@
                                     @endcan
                                     @can('delete', $task)
                                         <form action="{{ route('tasks.destroy', $task) }}" method="POST" onsubmit="return promptDelete('Task {{ addslashes($task->code) }}', this);" style="margin:0;">
-                                            @csrf
+                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-danger" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;">Delete</button>
                                         </form>
@@ -232,7 +232,7 @@
                             </div>
                         </div>
                     @empty
-                        <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem 0; border: 1px dashed var(--border-color); border-radius: 8px;">
+                        <div class="kanban-empty-placeholder" style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem 0; border: 1px dashed var(--border-color); border-radius: 8px;">
                             No tasks
                         </div>
                     @endforelse
@@ -261,7 +261,7 @@
                 </thead>
                 <tbody>
                     @forelse($allTasks as $t)
-                        <tr style="border-bottom: 1px solid var(--border-color);">
+                        <tr id="tabular-task-row-{{ $t->id }}" style="border-bottom: 1px solid var(--border-color);">
                             <td style="padding: 0.75rem;">
                                 <strong style="font-weight: 700; color: var(--primary); font-size: 0.84rem;">{{ $t->code }}</strong>
                             </td>
@@ -278,7 +278,7 @@
                                 <strong style="font-weight: 700; color: var(--text-main); font-size: 0.82rem; text-transform: capitalize;">{{ $t->priority }}</strong>
                             </td>
                             <td style="padding: 0.75rem;">
-                                <strong style="font-weight: 700; color: var(--primary); font-size: 0.82rem;">{{ $t->status }}</strong>
+                                <strong class="task-status-text" style="font-weight: 700; color: var(--primary); font-size: 0.82rem;">{{ $t->status }}</strong>
                             </td>
                             <td style="padding: 0.75rem;">
                                 <span style="font-size: 0.82rem; color: var(--text-main);">{{ $t->start_date ? $t->start_date->format('M d, Y') : 'TBD' }}</span>
@@ -315,7 +315,7 @@
 <div id="createTaskModal" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:900; backdrop-filter: blur(4px);">
     <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 520px; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 1rem; font-weight: 800; color: var(--primary);">+ Create New Task</h3>
-        <form action="{{ route('tasks.store', $project) }}" method="POST">
+        <form action="{{ route('tasks.store', $project) }}" method="POST" id="createTaskForm">
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Task Title</label>
@@ -366,11 +366,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
-                    <input type="date" name="start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="start_date" id="create_task_start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Due Date</label>
-                    <input type="date" name="due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="due_date" id="create_task_due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
             </div>
 
@@ -531,7 +531,7 @@
 <div id="createMilestoneModal" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:900; backdrop-filter: blur(4px);">
     <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 480px; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 1rem; font-weight: 800; color: var(--primary);">+ Create New Milestone</h3>
-        <form action="{{ route('milestones.store', $project) }}" method="POST">
+        <form action="{{ route('milestones.store', $project) }}" method="POST" id="createMilestoneForm">
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Milestone Title</label>
@@ -541,11 +541,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
-                    <input type="date" name="start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="start_date" id="create_ms_start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Due Date</label>
-                    <input type="date" name="due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="due_date" id="create_ms_due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
             </div>
 
@@ -610,8 +610,16 @@
         document.getElementById('edit_task_type').value = task.type || 'feature';
         document.getElementById('edit_task_priority').value = task.priority || 'medium';
         document.getElementById('edit_task_status').value = task.status || 'New';
-        document.getElementById('edit_task_start_date').value = task.start_date ? task.start_date.substring(0, 10) : '';
-        document.getElementById('edit_task_due_date').value = task.due_date ? task.due_date.substring(0, 10) : '';
+        
+        const startVal = task.start_date ? task.start_date.substring(0, 10) : '';
+        const dueVal = task.due_date ? task.due_date.substring(0, 10) : '';
+        const editStart = document.getElementById('edit_task_start_date');
+        const editDue = document.getElementById('edit_task_due_date');
+        editStart.value = startVal;
+        editDue.value = dueVal;
+        if (startVal) editDue.min = startVal; else editDue.removeAttribute('min');
+        if (dueVal) editStart.max = dueVal; else editStart.removeAttribute('max');
+
         document.getElementById('edit_task_description').value = task.description || '';
         
         if (task.assignees && $.fn.select2) {
@@ -682,11 +690,24 @@
 
     function allowDrop(ev) {
         ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
     }
 
     function dragTask(ev, taskId) {
         ev.dataTransfer.setData("text/plain", taskId);
+        ev.dataTransfer.effectAllowed = "move";
+        const card = document.getElementById('task-card-' + taskId);
+        if (card) {
+            setTimeout(() => { card.style.opacity = '0.5'; }, 0);
+        }
     }
+
+    document.addEventListener('dragend', function(e) {
+        const card = e.target.closest ? e.target.closest('.kanban-card') : null;
+        if (card) {
+            card.style.opacity = '1';
+        }
+    });
 
     let isMovingTask = false;
 
@@ -695,6 +716,64 @@
         const taskId = ev.dataTransfer.getData("text/plain");
         if (!taskId || isMovingTask) return;
 
+        const card = document.getElementById('task-card-' + taskId);
+        if (!card) return;
+        card.style.opacity = '1';
+
+        const sourceCol = card.closest('.kanban-column');
+        if (!sourceCol) return;
+
+        const sourceStatus = sourceCol.getAttribute('data-status');
+        if (sourceStatus.toLowerCase().trim() === targetStatus.toLowerCase().trim()) return;
+
+        // Find target column element
+        let targetCol = null;
+        document.querySelectorAll('.kanban-column').forEach(col => {
+            if (col.getAttribute('data-status').toLowerCase().trim() === targetStatus.toLowerCase().trim()) {
+                targetCol = col;
+            }
+        });
+        if (!targetCol) return;
+
+        const sourceContainer = sourceCol.querySelector('.kanban-cards-container');
+        const targetContainer = targetCol.querySelector('.kanban-cards-container');
+        if (!sourceContainer || !targetContainer) return;
+
+        const originalNextSibling = card.nextSibling;
+
+        // 1. Optimistic DOM Update (No Screen Reload)
+        const targetPlaceholder = targetContainer.querySelector('.kanban-empty-placeholder');
+        if (targetPlaceholder) {
+            targetPlaceholder.remove();
+        }
+        targetContainer.appendChild(card);
+
+        if (sourceContainer.querySelectorAll('.kanban-card').length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'kanban-empty-placeholder';
+            emptyDiv.style.cssText = 'text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem 0; border: 1px dashed var(--border-color); border-radius: 8px;';
+            emptyDiv.innerText = 'No tasks';
+            sourceContainer.appendChild(emptyDiv);
+        }
+
+        const sourceBadge = sourceCol.querySelector('.kanban-col-count');
+        if (sourceBadge) {
+            sourceBadge.textContent = sourceContainer.querySelectorAll('.kanban-card').length;
+        }
+        const targetBadge = targetCol.querySelector('.kanban-col-count');
+        if (targetBadge) {
+            targetBadge.textContent = targetContainer.querySelectorAll('.kanban-card').length;
+        }
+
+        if (window.taskStore && window.taskStore[taskId]) {
+            window.taskStore[taskId].status = targetStatus;
+        }
+        const tableRowStatus = document.querySelector(`#tabular-task-row-${taskId} .task-status-text`);
+        if (tableRowStatus) {
+            tableRowStatus.textContent = targetStatus;
+        }
+
+        // 2. Persist in database asynchronously
         isMovingTask = true;
         document.body.style.cursor = 'wait';
 
@@ -709,20 +788,98 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                window.location.reload();
-            } else {
+            isMovingTask = false;
+            document.body.style.cursor = 'default';
+
+            if (!data.success) {
+                rollbackMove();
                 alert(data.error || 'Failed to update task status.');
-                isMovingTask = false;
-                document.body.style.cursor = 'default';
             }
         })
         .catch(() => {
             isMovingTask = false;
             document.body.style.cursor = 'default';
+            rollbackMove();
             alert('Network error while moving task.');
         });
+
+        function rollbackMove() {
+            if (originalNextSibling && originalNextSibling.parentNode === sourceContainer) {
+                sourceContainer.insertBefore(card, originalNextSibling);
+            } else {
+                sourceContainer.appendChild(card);
+            }
+
+            const sourcePlaceholder = sourceContainer.querySelector('.kanban-empty-placeholder');
+            if (sourcePlaceholder && sourceContainer.querySelectorAll('.kanban-card').length > 0) {
+                sourcePlaceholder.remove();
+            }
+
+            if (targetContainer.querySelectorAll('.kanban-card').length === 0) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'kanban-empty-placeholder';
+                emptyDiv.style.cssText = 'text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem 0; border: 1px dashed var(--border-color); border-radius: 8px;';
+                emptyDiv.innerText = 'No tasks';
+                targetContainer.appendChild(emptyDiv);
+            }
+
+            if (sourceBadge) sourceBadge.textContent = sourceContainer.querySelectorAll('.kanban-card').length;
+            if (targetBadge) targetBadge.textContent = targetContainer.querySelectorAll('.kanban-card').length;
+
+            if (window.taskStore && window.taskStore[taskId]) {
+                window.taskStore[taskId].status = sourceStatus;
+            }
+            if (tableRowStatus) {
+                tableRowStatus.textContent = sourceStatus;
+            }
+        }
     }
+
+    function bindDatePair(startId, dueId, formId) {
+        const startEl = document.getElementById(startId);
+        const dueEl = document.getElementById(dueId);
+        const formEl = formId ? document.getElementById(formId) : null;
+        if (!startEl || !dueEl) return;
+
+        startEl.addEventListener('change', function() {
+            if (this.value) {
+                dueEl.min = this.value;
+                if (dueEl.value && dueEl.value < this.value) {
+                    dueEl.value = this.value;
+                }
+            } else {
+                dueEl.removeAttribute('min');
+            }
+        });
+
+        dueEl.addEventListener('change', function() {
+            if (this.value) {
+                startEl.max = this.value;
+                if (startEl.value && startEl.value > this.value) {
+                    startEl.value = this.value;
+                }
+            } else {
+                startEl.removeAttribute('max');
+            }
+        });
+
+        if (formEl) {
+            formEl.addEventListener('submit', function(e) {
+                if (startEl.value && dueEl.value && startEl.value > dueEl.value) {
+                    e.preventDefault();
+                    alert('Validation Error: Due Date (End Date) must be on or after Start Date.');
+                    dueEl.focus();
+                    return false;
+                }
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        bindDatePair('create_task_start_date', 'create_task_due_date', 'createTaskForm');
+        bindDatePair('edit_task_start_date', 'edit_task_due_date', 'editTaskForm');
+        bindDatePair('create_ms_start_date', 'create_ms_due_date', 'createMilestoneForm');
+    });
 </script>
 <script>
     $(document).ready(function() {
