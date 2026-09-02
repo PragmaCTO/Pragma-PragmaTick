@@ -91,7 +91,7 @@ class ProjectController extends Controller
 
         $project->load(['organization', 'users', 'milestones', 'tasks.assignee', 'tasks.parent', 'comments.user']);
         $project->loadCount(['tasks', 'milestones']);
-        $allUsers = User::orderBy('name')->get();
+        $allUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
 
         return view('projects.show', compact('project', 'allUsers', 'user'));
     }

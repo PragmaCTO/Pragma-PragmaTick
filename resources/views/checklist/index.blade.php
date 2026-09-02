@@ -188,7 +188,7 @@
     <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 500px; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 1rem; font-weight: 800; color: var(--primary);">+ New Private Checklist Item</h3>
         
-        <form action="{{ route('checklist.store') }}" method="POST">
+        <form action="{{ route('checklist.store') }}" method="POST" id="createChecklistForm">
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Title</label>
@@ -219,11 +219,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
-                    <input type="date" name="start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="start_date" id="create_chk_start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Due Date</label>
-                    <input type="date" name="due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="due_date" id="create_chk_due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
             </div>
 
@@ -346,13 +346,66 @@
     const currentUserId = {{ auth()->id() }};
     const isSuperAdmin = {{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }};
 
+    function bindDatePair(startId, dueId, formId) {
+        const startEl = document.getElementById(startId);
+        const dueEl = document.getElementById(dueId);
+        const formEl = formId ? document.getElementById(formId) : null;
+        if (!startEl || !dueEl) return;
+
+        startEl.addEventListener('change', function() {
+            if (this.value) {
+                dueEl.min = this.value;
+                if (dueEl.value && dueEl.value < this.value) {
+                    dueEl.value = this.value;
+                }
+            } else {
+                dueEl.removeAttribute('min');
+            }
+        });
+
+        dueEl.addEventListener('change', function() {
+            if (this.value) {
+                startEl.max = this.value;
+                if (startEl.value && startEl.value > this.value) {
+                    startEl.value = this.value;
+                }
+            } else {
+                startEl.removeAttribute('max');
+            }
+        });
+
+        if (formEl) {
+            formEl.addEventListener('submit', function(e) {
+                if (startEl.value && dueEl.value && startEl.value > dueEl.value) {
+                    e.preventDefault();
+                    alert('Validation Error: Due Date (End Date) must be on or after Start Date.');
+                    dueEl.focus();
+                    return false;
+                }
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        bindDatePair('create_chk_start_date', 'create_chk_due_date', 'createChecklistForm');
+        bindDatePair('chk_start_date', 'chk_due_date', 'editChecklistForm');
+    });
+
     function openEditChecklistModal(item) {
         document.getElementById('editChecklistForm').action = '/checklist/' + item.id;
         document.getElementById('chk_title').value = item.title || '';
         document.getElementById('chk_priority').value = item.priority || 'medium';
         document.getElementById('chk_status').value = item.status || 'To-Do';
-        document.getElementById('chk_start_date').value = item.start_date ? item.start_date.substring(0, 10) : '';
-        document.getElementById('chk_due_date').value = item.due_date ? item.due_date.substring(0, 10) : '';
+
+        const startVal = item.start_date ? item.start_date.substring(0, 10) : '';
+        const dueVal = item.due_date ? item.due_date.substring(0, 10) : '';
+        const editStart = document.getElementById('chk_start_date');
+        const editDue = document.getElementById('chk_due_date');
+        editStart.value = startVal;
+        editDue.value = dueVal;
+        if (startVal) editDue.min = startVal; else editDue.removeAttribute('min');
+        if (dueVal) editStart.max = dueVal; else editStart.removeAttribute('max');
+
         document.getElementById('chk_description').value = item.description || '';
 
         document.getElementById('editChecklistModal').style.display = 'flex';

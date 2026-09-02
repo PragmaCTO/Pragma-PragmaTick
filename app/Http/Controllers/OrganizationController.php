@@ -33,7 +33,7 @@ class OrganizationController extends Controller
                 ->get();
         }
 
-        $allUsers = User::orderBy('name')->get();
+        $allUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
 
         return view('organizations.index', compact('organizations', 'user', 'allUsers'));
     }
@@ -94,7 +94,7 @@ class OrganizationController extends Controller
 
         $organization->load(['users', 'projects' => fn($q) => $q->with('users')->withCount('tasks')])
             ->loadCount(['projects', 'users']);
-        $allUsers = User::orderBy('name')->get();
+        $allUsers = User::select('id', 'name', 'email')->orderBy('name')->get();
 
         return view('organizations.show', compact('organization', 'allUsers', 'user'));
     }

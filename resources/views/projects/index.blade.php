@@ -119,7 +119,7 @@
 <div id="createProjectModal" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:900; backdrop-filter: blur(4px);">
     <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 520px; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 1rem; font-weight: 800; color: var(--primary);">Create New Project</h3>
-        <form action="{{ route('projects.store') }}" method="POST">
+        <form action="{{ route('projects.store') }}" method="POST" id="createProjectForm">
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Organization</label>
@@ -143,11 +143,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
-                    <input type="date" name="start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="start_date" id="create_proj_start_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">End / Due Date</label>
-                    <input type="date" name="due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="due_date" id="create_proj_due_date" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
             </div>
 
@@ -164,4 +164,50 @@
     </div>
 </div>
 @endif
+
+<script>
+    function bindDatePair(startId, dueId, formId) {
+        const startEl = document.getElementById(startId);
+        const dueEl = document.getElementById(dueId);
+        const formEl = formId ? document.getElementById(formId) : null;
+        if (!startEl || !dueEl) return;
+
+        startEl.addEventListener('change', function() {
+            if (this.value) {
+                dueEl.min = this.value;
+                if (dueEl.value && dueEl.value < this.value) {
+                    dueEl.value = this.value;
+                }
+            } else {
+                dueEl.removeAttribute('min');
+            }
+        });
+
+        dueEl.addEventListener('change', function() {
+            if (this.value) {
+                startEl.max = this.value;
+                if (startEl.value && startEl.value > this.value) {
+                    startEl.value = this.value;
+                }
+            } else {
+                startEl.removeAttribute('max');
+            }
+        });
+
+        if (formEl) {
+            formEl.addEventListener('submit', function(e) {
+                if (startEl.value && dueEl.value && startEl.value > dueEl.value) {
+                    e.preventDefault();
+                    alert('Validation Error: Due Date (End Date) must be on or after Start Date.');
+                    dueEl.focus();
+                    return false;
+                }
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        bindDatePair('create_proj_start_date', 'create_proj_due_date', 'createProjectForm');
+    });
+</script>
 @endsection

@@ -83,7 +83,7 @@
 <div id="editProjectModal" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:900; backdrop-filter: blur(4px);">
     <div style="background: var(--bg-surface); padding: 2rem; border-radius: 14px; width: 90%; max-width: 500px; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 1rem; font-weight: 800; color: var(--primary);">Edit Project Details</h3>
-        <form action="{{ route('projects.update', $project) }}" method="POST">
+        <form action="{{ route('projects.update', $project) }}" method="POST" id="editProjectForm">
             @csrf
             @method('PUT')
             
@@ -100,11 +100,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
-                    <input type="date" name="start_date" value="{{ $project->start_date ? $project->start_date->format('Y-m-d') : '' }}" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="start_date" id="edit_project_start_date" value="{{ $project->start_date ? $project->start_date->format('Y-m-d') : '' }}" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
                 <div>
                     <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Due Date</label>
-                    <input type="date" name="due_date" value="{{ $project->due_date ? $project->due_date->format('Y-m-d') : '' }}" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
+                    <input type="date" name="due_date" id="edit_project_due_date" value="{{ $project->due_date ? $project->due_date->format('Y-m-d') : '' }}" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface-elevated); color:var(--text-main);">
                 </div>
             </div>
 
@@ -311,7 +311,7 @@
             <h3 style="font-weight: 800; color: var(--primary);">Create New Milestone</h3>
             <button type="button" onclick="document.getElementById('createMilestoneModal').style.display='none'" style="background:none; border:none; color: var(--text-muted); cursor:pointer;">✕</button>
         </div>
-        <form action="{{ route('milestones.store', $project) }}" method="POST">
+        <form action="{{ route('milestones.store', $project) }}" method="POST" id="createMilestoneForm">
             @csrf
             <div class="modal-body">
                 <div style="margin-bottom: 1rem;">
@@ -322,11 +322,11 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div>
                         <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Start Date</label>
-                        <input type="date" name="start_date" style="width:100%;">
+                        <input type="date" name="start_date" id="create_ms_start_date" style="width:100%;">
                     </div>
                     <div>
                         <label style="display:block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;">Due Date</label>
-                        <input type="date" name="due_date" style="width:100%;">
+                        <input type="date" name="due_date" id="create_ms_due_date" style="width:100%;">
                     </div>
                 </div>
 
@@ -404,11 +404,65 @@
 </div>
 
 <script>
+    function bindDatePair(startId, dueId, formId) {
+        const startEl = document.getElementById(startId);
+        const dueEl = document.getElementById(dueId);
+        const formEl = formId ? document.getElementById(formId) : null;
+        if (!startEl || !dueEl) return;
+
+        startEl.addEventListener('change', function() {
+            if (this.value) {
+                dueEl.min = this.value;
+                if (dueEl.value && dueEl.value < this.value) {
+                    dueEl.value = this.value;
+                }
+            } else {
+                dueEl.removeAttribute('min');
+            }
+        });
+
+        dueEl.addEventListener('change', function() {
+            if (this.value) {
+                startEl.max = this.value;
+                if (startEl.value && startEl.value > this.value) {
+                    startEl.value = this.value;
+                }
+            } else {
+                startEl.removeAttribute('max');
+            }
+        });
+
+        if (formEl) {
+            formEl.addEventListener('submit', function(e) {
+                if (startEl.value && dueEl.value && startEl.value > dueEl.value) {
+                    e.preventDefault();
+                    alert('Validation Error: Due Date (End Date) must be on or after Start Date.');
+                    dueEl.focus();
+                    return false;
+                }
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        bindDatePair('edit_project_start_date', 'edit_project_due_date', 'editProjectForm');
+        bindDatePair('create_ms_start_date', 'create_ms_due_date', 'createMilestoneForm');
+        bindDatePair('edit_ms_start_date', 'edit_ms_due_date', 'editMilestoneForm');
+    });
+
     function openEditMilestoneModal(m) {
         document.getElementById('editMilestoneForm').action = '/milestones/' + m.id;
         document.getElementById('edit_ms_title').value = m.title || '';
-        document.getElementById('edit_ms_start_date').value = m.start_date ? m.start_date.substring(0, 10) : '';
-        document.getElementById('edit_ms_due_date').value = m.due_date ? m.due_date.substring(0, 10) : '';
+        
+        const startVal = m.start_date ? m.start_date.substring(0, 10) : '';
+        const dueVal = m.due_date ? m.due_date.substring(0, 10) : '';
+        const editStart = document.getElementById('edit_ms_start_date');
+        const editDue = document.getElementById('edit_ms_due_date');
+        editStart.value = startVal;
+        editDue.value = dueVal;
+        if (startVal) editDue.min = startVal; else editDue.removeAttribute('min');
+        if (dueVal) editStart.max = dueVal; else editStart.removeAttribute('max');
+
         document.getElementById('edit_ms_status').value = m.status || 'open';
         document.getElementById('edit_ms_description').value = m.description || '';
         document.getElementById('editMilestoneModal').style.display = 'flex';

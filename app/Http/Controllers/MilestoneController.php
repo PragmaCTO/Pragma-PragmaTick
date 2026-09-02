@@ -62,7 +62,7 @@ class MilestoneController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'start_date' => 'nullable|date',
-            'due_date' => 'nullable|date',
+            'due_date' => 'nullable|date|after_or_equal:start_date',
             'status' => 'required|in:open,in_progress,completed,closed',
             'assignees' => 'nullable|array',
             'assignees.*' => 'exists:users,id',
